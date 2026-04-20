@@ -195,15 +195,8 @@ function runPageLeaveAnimation(current, next) {
   }, 0);
 
   // Panel sweeps up from bottom to cover screen
+  // Lottie is a child of the panel — it rides along naturally
   tl.fromTo(transitionPanel, {
-    yPercent: 0
-  }, {
-    yPercent: -100,
-    duration: 1,
-  }, 0);
-
-  // Lottie travels with the panel — enters from bottom
-  tl.fromTo(transitionLottieEl, {
     yPercent: 0
   }, {
     yPercent: -100,
@@ -268,16 +261,6 @@ function runPageEnterAnimation(next) {
     immediateRender: false
   }, "startEnter");
 
-  // Lottie continues upward with the panel — exits top
-  tl.fromTo(transitionLottieEl, {
-    yPercent: -100,
-  }, {
-    yPercent: -200,
-    duration: 1,
-    overwrite: "auto",
-    immediateRender: false
-  }, "startEnter");
-
   // Bottom curve scales out — rounded trailing edge
   tl.fromTo(transitionPanelBottom, {
     scaleY: 1
@@ -286,15 +269,14 @@ function runPageEnterAnimation(next) {
     duration: 1,
   }, "<");
 
-  // Hide panel after it exits
+  // Hide panel + lottie after it exits
   tl.set(transitionPanel, {
     autoAlpha: 0
   }, ">");
 
-  // Hide lottie after panel exits
   tl.set(transitionLottieEl, {
     autoAlpha: 0
-  }, ">");
+  }, "<");
 
   // New page slides up from below
   tl.from(next, {
