@@ -1,6 +1,6 @@
 // -----------------------------------------
-// BUFF MOTION — PAGE TRANSITION BOILERPLATE
-// Barba.js + GSAP + Lenis
+// BUFF MOTION — PAGE TRANSITIONS
+// Barba.js + GSAP + Lenis + Lottie wipe
 // -----------------------------------------
 
 import { initThemeToggle } from './theme-toggle.js';
@@ -10,14 +10,22 @@ import { initSliders, destroySliders } from './slider.js';
 import { initInlineVideos, destroyInlineVideos } from './inline-video.js';
 import { initModalDelegation, initModals, destroyModals } from './modal.js';
 import { initFontSizeDetect, initFooterYear, initSkipLink } from './utilities.js';
+import { initLottieAnimations, destroyLottieAnimations } from './lottie.js';
+import { initSplitTextReveal, destroySplitTextReveal } from './split-text.js';
 
 gsap.registerPlugin(CustomEase);
+if (typeof ScrollTrigger !== 'undefined') gsap.registerPlugin(ScrollTrigger);
+if (typeof SplitText !== 'undefined') gsap.registerPlugin(SplitText);
 
 history.scrollRestoration = "manual";
 
 let lenis = null;
 let nextPage = document;
 let onceFunctionsInitialized = false;
+
+// Transition Lottie — loaded once, replayed each transition
+let transitionLottie = null;
+const TRANSITION_LOTTIE_SRC = "https://cdn.prod.website-files.com/645f6d7e9938c3086a9a7b9b/64dce5684d3f0bd8a0c6ede2_Trans_Squiggle_In-Out-40.json";
 
 const hasLenis = typeof window.Lenis !== "undefined";
 const hasScrollTrigger = typeof window.ScrollTrigger !== "undefined";
@@ -37,11 +45,41 @@ gsap.defaults({ ease: "osmo", duration: durationDefault });
 
 
 // -----------------------------------------
+// TRANSITION LOTTIE SETUP
+// -----------------------------------------
+
+function initTransitionLottie() {
+  const container = document.querySelector("[data-transition-lottie]");
+  if (!container || transitionLottie) return;
+
+  transitionLottie = lottie.loadAnimation({
+    container: container,
+    renderer: "svg",
+    loop: false,
+    autoplay: false,
+    path: TRANSITION_LOTTIE_SRC,
+  });
+}
+
+function playTransitionLottie() {
+  if (!transitionLottie) return;
+  transitionLottie.goToAndStop(0, true);
+  transitionLottie.play();
+}
+
+function resetTransitionLottie() {
+  if (!transitionLottie) return;
+  transitionLottie.goToAndStop(0, true);
+}
+
+
+// -----------------------------------------
 // FUNCTION REGISTRY
 // -----------------------------------------
 
 function initOnceFunctions() {
   initLenis();
+  initTransitionLottie();
   if (onceFunctionsInitialized) return;
   onceFunctionsInitialized = true;
 
@@ -60,6 +98,8 @@ function initBeforeEnterFunctions(next) {
   destroySliders();
   destroyInlineVideos();
   destroyModals();
+  destroyLottieAnimations();
+  destroySplitTextReveal();
 }
 
 function initAfterEnterFunctions(next) {
@@ -72,6 +112,8 @@ function initAfterEnterFunctions(next) {
   if (has('[data-video]'))                          initInlineVideos(nextPage);
   if (has('dialog'))                                initModals(nextPage);
   if (has('[data-footer-year]'))                    initFooterYear(nextPage);
+  if (has('[data-lottie]'))                         initLottieAnimations(nextPage);
+  if (has('[data-split]'))                          initSplitTextReveal(nextPage);
 
   // Re-evaluate inline scripts inside the new container (Webflow embeds)
   reinitScripts(nextPage);
@@ -92,7 +134,7 @@ function initAfterEnterFunctions(next) {
 
 
 // -----------------------------------------
-// PAGE TRANSITIONS (Fade + H1 Reveal)
+// PAGE TRANSITIONS (Curved Wipe + Lottie)
 // -----------------------------------------
 
 function runPageOnceAnimation(next) {
@@ -106,6 +148,12 @@ function runPageOnceAnimation(next) {
 }
 
 function runPageLeaveAnimation(current, next) {
+  const transitionWrap = document.querySelector("[data-transition-wrap]");
+  const transitionPanel = transitionWrap.querySelector("[data-transition-panel]");
+  const transitionPanelTop = transitionWrap.querySelector("[data-transition-panel-top]");
+  const transitionPanelBottom = transitionWrap.querySelector("[data-transition-panel-bottom]");
+  const transitionLottieEl = transitionWrap.querySelector("[data-transition-lottie]");
+
   const tl = gsap.timeline({
     onComplete: () => { current.remove(); }
   });
@@ -114,16 +162,67 @@ function runPageLeaveAnimation(current, next) {
     return tl.set(current, { autoAlpha: 0 });
   }
 
-  tl.to(current, {
-    autoAlpha: 0,
-    ease: "power1.in",
-    duration: 0.5,
+  // Reset panel state
+  tl.set(transitionPanel, {
+    autoAlpha: 1
+  }, 0);
+
+  tl.set(transitionPanelTop, {
+    scaleY: 0,
+    height: "15vw"
+  }, 0);
+
+  tl.set(transitionPanelBottom, {
+    scaleY: 1,
+    height: "20vw"
+  }, 0);
+
+  tl.set(transitionLottieEl, {
+    autoAlpha: 1
+  }, 0);
+
+  tl.set(next, {
+    autoAlpha: 0
+  }, 0);
+
+  // Panel sweeps up from bottom to cover screen
+  tl.fromTo(transitionPanel, {
+    yPercent: 0
+  }, {
+    yPercent: -100,
+    duration: 1,
+  }, 0);
+
+  // Top curve scales in — rounded leading edge
+  tl.fromTo(transitionPanelTop, {
+    scaleY: 0
+  }, {
+    scaleY: 1,
+    duration: 1,
+  }, "<");
+
+  // Play the Lottie as panel covers
+  tl.call(() => {
+    playTransitionLottie();
+  }, null, 0.4);
+
+  // Current page slides up as it gets covered
+  tl.fromTo(current, {
+    y: "0vh"
+  }, {
+    y: "-15dvh",
+    duration: 1,
   }, 0);
 
   return tl;
 }
 
 function runPageEnterAnimation(next) {
+  const transitionWrap = document.querySelector("[data-transition-wrap]");
+  const transitionPanel = transitionWrap.querySelector("[data-transition-panel]");
+  const transitionPanelBottom = transitionWrap.querySelector("[data-transition-panel-bottom]");
+  const transitionLottieEl = transitionWrap.querySelector("[data-transition-lottie]");
+
   const tl = gsap.timeline();
 
   if (reducedMotion) {
@@ -133,30 +232,54 @@ function runPageEnterAnimation(next) {
     return new Promise(resolve => tl.call(resolve, null, "pageReady"));
   }
 
-  tl.add("startEnter", 0);
+  // Hold for Lottie to play, then reveal
+  tl.add("startEnter", 1.35);
 
-  tl.fromTo(next, {
-    autoAlpha: 0,
-  }, {
+  // Show new page
+  tl.set(next, {
     autoAlpha: 1,
-    ease: "power1.inOut",
-    duration: 0.75,
   }, "startEnter");
 
-  const h1 = next.querySelector('h1');
-  if (h1) {
-    tl.fromTo(h1, {
-      yPercent: 25,
-      autoAlpha: 0,
-    }, {
-      yPercent: 0,
-      autoAlpha: 1,
-      ease: "expo.out",
-      duration: 1,
-    }, "< 0.3");
-  }
+  // Panel continues upward out of view
+  tl.fromTo(transitionPanel, {
+    yPercent: -100,
+  }, {
+    yPercent: -200,
+    duration: 1,
+    overwrite: "auto",
+    immediateRender: false
+  }, "startEnter");
+
+  // Bottom curve scales out — rounded trailing edge
+  tl.fromTo(transitionPanelBottom, {
+    scaleY: 1
+  }, {
+    scaleY: 0,
+    duration: 1,
+  }, "<");
+
+  // Hide panel after it exits
+  tl.set(transitionPanel, {
+    autoAlpha: 0
+  }, ">");
+
+  // Fade out the Lottie as panel exits
+  tl.to(transitionLottieEl, {
+    autoAlpha: 0,
+    duration: 0.4,
+    ease: "power1.in",
+  }, "startEnter");
+
+  // New page slides up from below
+  tl.from(next, {
+    y: "25dvh",
+    duration: 1,
+  }, "startEnter");
 
   tl.add("pageReady");
+  tl.call(() => {
+    resetTransitionLottie();
+  }, null, "pageReady");
   tl.call(resetPage, [next], "pageReady");
 
   return new Promise(resolve => {
@@ -170,15 +293,7 @@ function runPageEnterAnimation(next) {
 // -----------------------------------------
 
 barba.hooks.beforeEnter(data => {
-  // Fix old page at top — the fade masks the scroll jump
-  gsap.set(data.current.container, {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-  });
-
-  // Position new page at top
+  // Position new container on top
   gsap.set(data.next.container, {
     position: "fixed",
     top: 0,
@@ -186,14 +301,12 @@ barba.hooks.beforeEnter(data => {
     right: 0,
   });
 
-  // Reset scroll immediately now both pages are fixed
-  window.scrollTo(0, 0);
-
   if (lenis && typeof lenis.stop === "function") {
     lenis.stop();
   }
 
   initBeforeEnterFunctions(data.next.container);
+  applyThemeFrom(data.next.container);
 });
 
 barba.hooks.afterLeave(() => {
@@ -220,7 +333,7 @@ barba.hooks.afterEnter(data => {
 });
 
 barba.init({
-  debug: false,
+  debug: true, // Set to false in production
   timeout: 7000,
   preventRunning: true,
   transitions: [
@@ -248,6 +361,33 @@ barba.init({
 // -----------------------------------------
 // HELPERS
 // -----------------------------------------
+
+const themeConfig = {
+  light: {
+    nav: "dark",
+    transition: "light"
+  },
+  dark: {
+    nav: "light",
+    transition: "dark"
+  }
+};
+
+function applyThemeFrom(container) {
+  const pageTheme = container?.dataset?.pageTheme || "light";
+  const config = themeConfig[pageTheme] || themeConfig.light;
+
+  document.body.dataset.pageTheme = pageTheme;
+  const transitionEl = document.querySelector('[data-theme-transition]');
+  if (transitionEl) {
+    transitionEl.dataset.themeTransition = config.transition;
+  }
+
+  const nav = document.querySelector('[data-theme-nav]');
+  if (nav) {
+    nav.dataset.themeNav = config.nav;
+  }
+}
 
 function initLenis() {
   if (lenis) return;
