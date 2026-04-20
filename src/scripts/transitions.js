@@ -25,7 +25,6 @@ let onceFunctionsInitialized = false;
 
 // Transition Lottie — loaded once, replayed each transition
 let transitionLottie = null;
-const TRANSITION_LOTTIE_SRC = "https://cdn.prod.website-files.com/645f6d7e9938c3086a9a7b9b/64dce5684d3f0bd8a0c6ede2_Trans_Squiggle_In-Out-40.json";
 
 const hasLenis = typeof window.Lenis !== "undefined";
 const hasScrollTrigger = typeof window.ScrollTrigger !== "undefined";
@@ -43,6 +42,8 @@ let durationDefault = 0.6;
 CustomEase.create("osmo", "0.625, 0.05, 0, 1");
 gsap.defaults({ ease: "osmo", duration: durationDefault });
 
+console.log("[buff] Bundle loaded — barba:", typeof barba, "gsap:", typeof gsap, "lenis:", hasLenis, "lottie:", typeof lottie);
+
 
 // -----------------------------------------
 // TRANSITION LOTTIE SETUP
@@ -52,12 +53,18 @@ function initTransitionLottie() {
   const container = document.querySelector("[data-transition-lottie]");
   if (!container || transitionLottie) return;
 
+  const src = container.getAttribute("data-lottie-src");
+  if (!src) {
+    console.warn("[buff] No data-lottie-src on transition lottie element");
+    return;
+  }
+
   transitionLottie = lottie.loadAnimation({
     container: container,
     renderer: "svg",
     loop: false,
     autoplay: false,
-    path: TRANSITION_LOTTIE_SRC,
+    path: src,
   });
 }
 
@@ -138,6 +145,7 @@ function initAfterEnterFunctions(next) {
 // -----------------------------------------
 
 function runPageOnceAnimation(next) {
+  console.log("[buff] once — first page load");
   const tl = gsap.timeline();
 
   tl.call(() => {
@@ -148,6 +156,7 @@ function runPageOnceAnimation(next) {
 }
 
 function runPageLeaveAnimation(current, next) {
+  console.log("[buff] leave — page exit animation");
   const transitionWrap = document.querySelector("[data-transition-wrap]");
   const transitionPanel = transitionWrap.querySelector("[data-transition-panel]");
   const transitionPanelTop = transitionWrap.querySelector("[data-transition-panel-top]");
@@ -218,6 +227,7 @@ function runPageLeaveAnimation(current, next) {
 }
 
 function runPageEnterAnimation(next) {
+  console.log("[buff] enter — page enter animation");
   const transitionWrap = document.querySelector("[data-transition-wrap]");
   const transitionPanel = transitionWrap.querySelector("[data-transition-panel]");
   const transitionPanelBottom = transitionWrap.querySelector("[data-transition-panel-bottom]");
