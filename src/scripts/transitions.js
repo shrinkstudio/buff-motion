@@ -200,7 +200,7 @@ function runPageLeaveAnimation(current, next) {
     yPercent: 0
   }, {
     yPercent: -100,
-    duration: 1,
+    duration: 0.8,
   }, 0);
 
   // Top curve scales in — rounded leading edge
@@ -208,20 +208,20 @@ function runPageLeaveAnimation(current, next) {
     scaleY: 0
   }, {
     scaleY: 1,
-    duration: 1,
+    duration: 0.8,
   }, "<");
 
   // Play the Lottie as it enters the viewport
   tl.call(() => {
     playTransitionLottie();
-  }, null, 0.3);
+  }, null, 0.2);
 
   // Current page slides up as it gets covered
   tl.fromTo(current, {
     y: "0vh"
   }, {
-    y: "-15dvh",
-    duration: 1,
+    y: "-10dvh",
+    duration: 0.8,
   }, 0);
 
   return tl;
@@ -243,8 +243,8 @@ function runPageEnterAnimation(next) {
     return new Promise(resolve => tl.call(resolve, null, "pageReady"));
   }
 
-  // Hold for Lottie to play, then reveal
-  tl.add("startEnter", 1.2);
+  // Brief hold for Lottie, then reveal
+  tl.add("startEnter", 0.6);
 
   // Show new page
   tl.set(next, {
@@ -256,7 +256,7 @@ function runPageEnterAnimation(next) {
     yPercent: -100,
   }, {
     yPercent: -200,
-    duration: 1,
+    duration: 0.8,
     overwrite: "auto",
     immediateRender: false
   }, "startEnter");
@@ -266,7 +266,7 @@ function runPageEnterAnimation(next) {
     scaleY: 1
   }, {
     scaleY: 0,
-    duration: 1,
+    duration: 0.8,
   }, "<");
 
   // Hide panel + lottie after it exits
@@ -280,8 +280,8 @@ function runPageEnterAnimation(next) {
 
   // New page slides up from below
   tl.from(next, {
-    y: "25dvh",
-    duration: 1,
+    y: "15dvh",
+    duration: 0.8,
   }, "startEnter");
 
   tl.add("pageReady");
