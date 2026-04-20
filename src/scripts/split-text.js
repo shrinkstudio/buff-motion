@@ -1,6 +1,11 @@
 // -----------------------------------------
 // SPLIT TEXT REVEAL (Shrink Boilerplate)
 // GSAP SplitText + ScrollTrigger masked line reveal
+//
+// Attributes:
+//   data-split="heading"           — marks element for split animation
+//   data-split-reveal="lines"      — split type: "lines" (default), "words", or "chars"
+//   data-split-hero="true"         — plays immediately after page enter (no ScrollTrigger)
 // -----------------------------------------
 
 let splitInstances = [];
@@ -25,6 +30,8 @@ export function initSplitTextReveal(scope) {
     gsap.set(heading, { autoAlpha: 1 });
 
     const type = heading.dataset.splitReveal || "lines";
+    const isHero = heading.dataset.splitHero === "true";
+
     const typesToSplit =
       type === "lines" ? ["lines"] :
       type === "words" ? ["lines", "words"] :
@@ -48,7 +55,9 @@ export function initSplitTextReveal(scope) {
           ease: "expo.out",
         };
 
-        if (hasScrollTrigger) {
+        // Hero headings play immediately (fired after transition clears)
+        // All other headings use ScrollTrigger
+        if (!isHero && hasScrollTrigger) {
           tweenConfig.scrollTrigger = {
             trigger: heading,
             start: "clamp(top 80%)",
