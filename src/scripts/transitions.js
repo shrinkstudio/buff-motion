@@ -3,7 +3,6 @@
 // Barba.js + GSAP + Lenis + Lottie wipe
 // -----------------------------------------
 
-import { initThemeToggle } from './theme-toggle.js';
 import { initAccordions, destroyAccordions } from './accordion.js';
 import { initTabs, destroyTabs } from './tabs.js';
 import { initSliders, destroySliders } from './slider.js';
@@ -112,7 +111,6 @@ function initBeforeEnterFunctions(next) {
 function initAfterEnterFunctions(next) {
   nextPage = next || document;
 
-  if (has('[data-theme-toggle]'))                   initThemeToggle(nextPage);
   if (has('details'))                               initAccordions(nextPage);
   if (has('[data-tabs-component]'))                 initTabs(nextPage);
   if (has('[data-slider]'))                         initSliders(nextPage);
