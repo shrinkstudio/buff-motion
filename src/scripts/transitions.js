@@ -210,10 +210,10 @@ function runPageLeaveAnimation(current, next) {
     duration: 1,
   }, "<");
 
-  // Play the Lottie as panel covers
+  // Play the Lottie once the panel has covered the screen
   tl.call(() => {
     playTransitionLottie();
-  }, null, 0.4);
+  }, null, 0.8);
 
   // Current page slides up as it gets covered
   tl.fromTo(current, {
@@ -243,7 +243,7 @@ function runPageEnterAnimation(next) {
   }
 
   // Hold for Lottie to play, then reveal
-  tl.add("startEnter", 1.35);
+  tl.add("startEnter", 1.8);
 
   // Show new page
   tl.set(next, {
