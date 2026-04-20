@@ -199,16 +199,15 @@ function runPageLeaveAnimation(current, next) {
     yPercent: 0
   }, {
     yPercent: -100,
-    duration: 0.8,
+    duration: 1,
   }, 0);
 
   // Counter-animate lottie so it stays fixed on screen
-  // Panel moves -100, lottie moves +100 = net zero movement
   tl.fromTo(transitionLottieEl, {
     yPercent: 0
   }, {
     yPercent: 100,
-    duration: 0.8,
+    duration: 1,
   }, 0);
 
   // Top curve scales in — rounded leading edge
@@ -216,20 +215,20 @@ function runPageLeaveAnimation(current, next) {
     scaleY: 0
   }, {
     scaleY: 1,
-    duration: 0.8,
+    duration: 1,
   }, "<");
 
   // Play the Lottie as panel covers the screen
   tl.call(() => {
     playTransitionLottie();
-  }, null, 0.35);
+  }, null, 0.4);
 
   // Current page slides up as it gets covered
   tl.fromTo(current, {
     y: "0vh"
   }, {
     y: "-10dvh",
-    duration: 0.8,
+    duration: 1,
   }, 0);
 
   return tl;
@@ -264,7 +263,7 @@ function runPageEnterAnimation(next) {
     yPercent: -100,
   }, {
     yPercent: -200,
-    duration: 0.8,
+    duration: 1,
     overwrite: "auto",
     immediateRender: false
   }, "startEnter");
@@ -274,7 +273,7 @@ function runPageEnterAnimation(next) {
     yPercent: 100,
   }, {
     yPercent: 200,
-    duration: 0.8,
+    duration: 1,
     overwrite: "auto",
     immediateRender: false
   }, "startEnter");
@@ -284,7 +283,7 @@ function runPageEnterAnimation(next) {
     scaleY: 1
   }, {
     scaleY: 0,
-    duration: 0.8,
+    duration: 1,
   }, "<");
 
   // Hide panel + lottie after it exits
@@ -299,7 +298,7 @@ function runPageEnterAnimation(next) {
   // New page slides up from below
   tl.from(next, {
     y: "15dvh",
-    duration: 0.8,
+    duration: 1,
   }, "startEnter");
 
   tl.add("pageReady");
