@@ -178,12 +178,12 @@ function runPageLeaveAnimation(current, next) {
 
   tl.set(transitionPanelTop, {
     scaleY: 0,
-    height: "15vw"
+    height: "5vw"
   }, 0);
 
   tl.set(transitionPanelBottom, {
     scaleY: 1,
-    height: "20vw"
+    height: "8vw"
   }, 0);
 
   tl.set(transitionLottieEl, {
@@ -195,11 +195,19 @@ function runPageLeaveAnimation(current, next) {
   }, 0);
 
   // Panel sweeps up from bottom to cover screen
-  // Lottie is a child of the panel — it rides along naturally
   tl.fromTo(transitionPanel, {
     yPercent: 0
   }, {
     yPercent: -100,
+    duration: 0.8,
+  }, 0);
+
+  // Counter-animate lottie so it stays fixed on screen
+  // Panel moves -100, lottie moves +100 = net zero movement
+  tl.fromTo(transitionLottieEl, {
+    yPercent: 0
+  }, {
+    yPercent: 100,
     duration: 0.8,
   }, 0);
 
@@ -211,10 +219,10 @@ function runPageLeaveAnimation(current, next) {
     duration: 0.8,
   }, "<");
 
-  // Play the Lottie as it enters the viewport
+  // Play the Lottie as panel covers the screen
   tl.call(() => {
     playTransitionLottie();
-  }, null, 0.2);
+  }, null, 0.35);
 
   // Current page slides up as it gets covered
   tl.fromTo(current, {
@@ -256,6 +264,16 @@ function runPageEnterAnimation(next) {
     yPercent: -100,
   }, {
     yPercent: -200,
+    duration: 0.8,
+    overwrite: "auto",
+    immediateRender: false
+  }, "startEnter");
+
+  // Counter-animate lottie to stay fixed while panel exits
+  tl.fromTo(transitionLottieEl, {
+    yPercent: 100,
+  }, {
+    yPercent: 200,
     duration: 0.8,
     overwrite: "auto",
     immediateRender: false
