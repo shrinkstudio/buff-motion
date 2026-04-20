@@ -250,8 +250,8 @@ function runPageEnterAnimation(next) {
     return new Promise(resolve => tl.call(resolve, null, "pageReady"));
   }
 
-  // Brief hold for Lottie, then reveal
-  tl.add("startEnter", 0.6);
+  // Lottie plays during the leave — no gap before reveal
+  tl.add("startEnter", 0.1);
 
   // Show new page
   tl.set(next, {
@@ -263,7 +263,7 @@ function runPageEnterAnimation(next) {
     yPercent: -100,
   }, {
     yPercent: -200,
-    duration: 1,
+    duration: 1.2,
     overwrite: "auto",
     immediateRender: false
   }, "startEnter");
@@ -273,7 +273,7 @@ function runPageEnterAnimation(next) {
     yPercent: 100,
   }, {
     yPercent: 200,
-    duration: 1,
+    duration: 1.2,
     overwrite: "auto",
     immediateRender: false
   }, "startEnter");
@@ -283,7 +283,7 @@ function runPageEnterAnimation(next) {
     scaleY: 1
   }, {
     scaleY: 0,
-    duration: 1,
+    duration: 1.2,
   }, "<");
 
   // Hide panel + lottie after it exits
@@ -298,7 +298,7 @@ function runPageEnterAnimation(next) {
   // New page slides up from below
   tl.from(next, {
     y: "15dvh",
-    duration: 1,
+    duration: 1.2,
   }, "startEnter");
 
   tl.add("pageReady");
