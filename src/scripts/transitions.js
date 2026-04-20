@@ -202,6 +202,14 @@ function runPageLeaveAnimation(current, next) {
     duration: 1,
   }, 0);
 
+  // Lottie travels with the panel — enters from bottom
+  tl.fromTo(transitionLottieEl, {
+    yPercent: 0
+  }, {
+    yPercent: -100,
+    duration: 1,
+  }, 0);
+
   // Top curve scales in — rounded leading edge
   tl.fromTo(transitionPanelTop, {
     scaleY: 0
@@ -210,10 +218,10 @@ function runPageLeaveAnimation(current, next) {
     duration: 1,
   }, "<");
 
-  // Play the Lottie once the panel has covered the screen
+  // Play the Lottie as it enters the viewport
   tl.call(() => {
     playTransitionLottie();
-  }, null, 0.8);
+  }, null, 0.3);
 
   // Current page slides up as it gets covered
   tl.fromTo(current, {
@@ -243,7 +251,7 @@ function runPageEnterAnimation(next) {
   }
 
   // Hold for Lottie to play, then reveal
-  tl.add("startEnter", 1.8);
+  tl.add("startEnter", 1.2);
 
   // Show new page
   tl.set(next, {
@@ -252,6 +260,16 @@ function runPageEnterAnimation(next) {
 
   // Panel continues upward out of view
   tl.fromTo(transitionPanel, {
+    yPercent: -100,
+  }, {
+    yPercent: -200,
+    duration: 1,
+    overwrite: "auto",
+    immediateRender: false
+  }, "startEnter");
+
+  // Lottie continues upward with the panel — exits top
+  tl.fromTo(transitionLottieEl, {
     yPercent: -100,
   }, {
     yPercent: -200,
@@ -273,12 +291,10 @@ function runPageEnterAnimation(next) {
     autoAlpha: 0
   }, ">");
 
-  // Fade out the Lottie as panel exits
-  tl.to(transitionLottieEl, {
-    autoAlpha: 0,
-    duration: 0.4,
-    ease: "power1.in",
-  }, "startEnter");
+  // Hide lottie after panel exits
+  tl.set(transitionLottieEl, {
+    autoAlpha: 0
+  }, ">");
 
   // New page slides up from below
   tl.from(next, {
