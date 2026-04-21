@@ -11,6 +11,7 @@ import { initModalDelegation, initModals, destroyModals } from './modal.js';
 import { initFontSizeDetect, initFooterYear, initSkipLink } from './utilities.js';
 import { initLottieAnimations, destroyLottieAnimations } from './lottie.js';
 import { initSplitTextReveal, destroySplitTextReveal } from './split-text.js';
+import { initCopyClip, destroyCopyClip } from './copy-clip.js';
 
 gsap.registerPlugin(CustomEase);
 if (typeof ScrollTrigger !== 'undefined') gsap.registerPlugin(ScrollTrigger);
@@ -106,6 +107,7 @@ function initBeforeEnterFunctions(next) {
   destroyModals();
   destroyLottieAnimations();
   destroySplitTextReveal();
+  destroyCopyClip();
 }
 
 function initAfterEnterFunctions(next) {
@@ -119,6 +121,7 @@ function initAfterEnterFunctions(next) {
   if (has('[data-footer-year]'))                    initFooterYear(nextPage);
   if (has('[data-lottie]'))                         initLottieAnimations(nextPage);
   if (has('[data-split]'))                          initSplitTextReveal(nextPage);
+  if (has('[data-copy]'))                           initCopyClip(nextPage);
 
   // Re-evaluate inline scripts inside the new container (Webflow embeds)
   reinitScripts(nextPage);
