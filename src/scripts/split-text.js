@@ -39,7 +39,6 @@ export function initSplitTextReveal(scope) {
 
     const instance = SplitText.create(heading, {
       type: typesToSplit.join(", "),
-      mask: "lines",
       autoSplit: true,
       linesClass: "line",
       wordsClass: "word",
@@ -49,10 +48,10 @@ export function initSplitTextReveal(scope) {
         const config = splitConfig[type];
 
         const tweenConfig = {
-          yPercent: 110,
+          autoAlpha: 0,
+          y: 20,
           duration: config.duration,
           stagger: config.stagger,
-          ease: "expo.out",
         };
 
         // Hero headings play immediately (fired after transition clears)
