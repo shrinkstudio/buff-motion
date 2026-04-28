@@ -49,7 +49,7 @@ export function initSplitTextReveal(scope) {
 
         const tweenConfig = {
           autoAlpha: 0,
-          y: 20,
+          y: 40,
           duration: config.duration,
           stagger: config.stagger,
         };

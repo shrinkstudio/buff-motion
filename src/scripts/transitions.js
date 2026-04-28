@@ -13,6 +13,7 @@ import { initLottieAnimations, destroyLottieAnimations } from './lottie.js';
 import { initSplitTextReveal, destroySplitTextReveal } from './split-text.js';
 import { initCopyClip, destroyCopyClip } from './copy-clip.js';
 import { initTOC, destroyTOC } from './toc.js';
+import { initContentReveal, destroyContentReveal } from './content-reveal.js';
 
 gsap.registerPlugin(CustomEase);
 if (typeof ScrollTrigger !== 'undefined') gsap.registerPlugin(ScrollTrigger);
@@ -110,6 +111,7 @@ function initBeforeEnterFunctions(next) {
   destroySplitTextReveal();
   destroyCopyClip();
   destroyTOC();
+  destroyContentReveal();
 }
 
 function initAfterEnterFunctions(next) {
@@ -125,6 +127,7 @@ function initAfterEnterFunctions(next) {
   if (has('[data-split]'))                          initSplitTextReveal(nextPage);
   if (has('[data-copy]'))                           initCopyClip(nextPage);
   if (has('[data-toc-source]'))                     initTOC(nextPage);
+  if (has('[data-reveal-group]'))                   initContentReveal(nextPage);
 
   // Re-evaluate inline scripts inside the new container (Webflow embeds)
   reinitScripts(nextPage);
