@@ -1,6 +1,12 @@
 // -----------------------------------------
 // LOTTIE (Shrink Boilerplate)
 // Scroll-triggered Lottie with lazy load + reduced motion
+//
+// Transform attributes (applied via gsap.set on init):
+//   data-lottie-x         — translateX  (default: "0%")
+//   data-lottie-y         — translateY  (default: "0%")
+//   data-lottie-scale     — scale       (default: 1)
+//   data-lottie-rotate    — rotation    (default: 0, degrees)
 // -----------------------------------------
 
 let triggers = [];
@@ -15,6 +21,20 @@ export function initLottieAnimations(scope) {
   scope.querySelectorAll("[data-lottie]").forEach(target => {
     // Skip if already fired (e.g. transition lottie)
     if (target.hasAttribute("data-lottie-fired")) return;
+
+    // Apply attribute-driven transforms
+    const transforms = {};
+    const lx = target.getAttribute("data-lottie-x");
+    const ly = target.getAttribute("data-lottie-y");
+    const ls = target.getAttribute("data-lottie-scale");
+    const lr = target.getAttribute("data-lottie-rotate");
+    if (lx) transforms.xPercent = parseFloat(lx);
+    if (ly) transforms.yPercent = parseFloat(ly);
+    if (ls) transforms.scale = parseFloat(ls);
+    if (lr) transforms.rotation = parseFloat(lr);
+    if (Object.keys(transforms).length) {
+      gsap.set(target, transforms);
+    }
 
     let anim = null;
 
