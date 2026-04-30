@@ -13,11 +13,21 @@
 //   data-lottie-loop      — "true"/"false"  (default: "true")
 //   data-lottie-start     — start % of total frames (default: 0)
 //   data-lottie-end       — end % of total frames   (default: 100)
+//
+// Container attribute (on parent, e.g. Grid Column):
+//   data-lottie-only      — hides this element below 768px (tablet)
 // -----------------------------------------
 
 let triggers = [];
+let lottieOnlyStyle = null;
 
 export function initLottieAnimations(scope) {
+  // Hide data-lottie-only containers below tablet
+  if (!lottieOnlyStyle) {
+    lottieOnlyStyle = document.createElement("style");
+    lottieOnlyStyle.textContent = "@media (max-width: 767px) { [data-lottie-only] { display: none !important; } }";
+    document.head.appendChild(lottieOnlyStyle);
+  }
   if (typeof lottie === "undefined") return;
 
   scope = scope || document;
