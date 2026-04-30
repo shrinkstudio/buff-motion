@@ -7,6 +7,7 @@
 //   data-lottie-y         — translateY  (default: "0%")
 //   data-lottie-scale     — scale       (default: 1)
 //   data-lottie-rotate    — rotation    (default: 0, degrees)
+//   data-lottie-z         — zIndex      (default: auto)
 // -----------------------------------------
 
 let triggers = [];
@@ -28,10 +29,12 @@ export function initLottieAnimations(scope) {
     const ly = target.getAttribute("data-lottie-y");
     const ls = target.getAttribute("data-lottie-scale");
     const lr = target.getAttribute("data-lottie-rotate");
+    const lz = target.getAttribute("data-lottie-z");
     if (lx) transforms.xPercent = parseFloat(lx);
     if (ly) transforms.yPercent = parseFloat(ly);
     if (ls) transforms.scale = parseFloat(ls);
     if (lr) transforms.rotation = parseFloat(lr);
+    if (lz) transforms.zIndex = parseInt(lz, 10);
     if (Object.keys(transforms).length) {
       gsap.set(target, transforms);
     }
