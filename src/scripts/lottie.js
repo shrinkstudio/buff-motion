@@ -73,12 +73,16 @@ export function initLottieAnimations(scope) {
           const startFrame = Math.round((startPct / 100) * totalFrames);
           const endFrame = Math.round((endPct / 100) * totalFrames);
 
-          if (startPct > 0 || endPct < 100) {
-            // Play segment — lottie playSegments accepts [start, end]
-            anim.playSegments([startFrame, endFrame], true);
-          } else {
-            anim.goToAndPlay(0, true);
+          // Stop at end frame when not looping
+          if (!shouldLoop) {
+            anim.addEventListener("enterFrame", () => {
+              if (anim.currentFrame >= endFrame - 1) {
+                anim.pause();
+              }
+            });
           }
+
+          anim.goToAndPlay(startFrame, true);
         });
       } else if (anim && !reduceMotion) {
         anim.play();
