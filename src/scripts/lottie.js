@@ -8,6 +8,11 @@
 //   data-lottie-scale     — scale       (default: 1)
 //   data-lottie-rotate    — rotation    (default: 0, degrees)
 //   data-lottie-z         — zIndex      (default: auto)
+//
+// Playback attributes:
+//   data-lottie-loop      — "true"/"false"  (default: "true")
+//   data-lottie-start     — start % of total frames (default: 0)
+//   data-lottie-end       — end % of total frames   (default: 100)
 // -----------------------------------------
 
 let triggers = [];
@@ -45,11 +50,15 @@ export function initLottieAnimations(scope) {
       if (!target.hasAttribute("data-lottie-fired")) {
         target.setAttribute("data-lottie-fired", "true");
 
+        const shouldLoop = target.getAttribute("data-lottie-loop") !== "false";
+        const startPct = parseFloat(target.getAttribute("data-lottie-start") || "0");
+        const endPct = parseFloat(target.getAttribute("data-lottie-end") || "100");
+
         anim = lottie.loadAnimation({
           container: target,
           renderer: "svg",
-          loop: true,
-          autoplay: !reduceMotion,
+          loop: shouldLoop,
+          autoplay: false,
           path: target.getAttribute("data-lottie-src"),
         });
 
@@ -57,6 +66,18 @@ export function initLottieAnimations(scope) {
           if (reduceMotion) {
             const frame = parseInt(target.getAttribute("data-lottie-frame") || "0", 10);
             anim.goToAndStop(frame, true);
+            return;
+          }
+
+          const totalFrames = anim.totalFrames;
+          const startFrame = Math.round((startPct / 100) * totalFrames);
+          const endFrame = Math.round((endPct / 100) * totalFrames);
+
+          if (startPct > 0 || endPct < 100) {
+            // Play segment — lottie playSegments accepts [start, end]
+            anim.playSegments([startFrame, endFrame], true);
+          } else {
+            anim.goToAndPlay(0, true);
           }
         });
       } else if (anim && !reduceMotion) {
