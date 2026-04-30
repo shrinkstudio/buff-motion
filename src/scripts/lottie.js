@@ -25,7 +25,7 @@ export function initLottieAnimations(scope) {
   // Hide data-lottie-only containers below tablet
   if (!lottieOnlyStyle) {
     lottieOnlyStyle = document.createElement("style");
-    lottieOnlyStyle.textContent = "@media (max-width: 767px) { [data-lottie-only] { display: none !important; } }";
+    lottieOnlyStyle.textContent = "@media (max-width: 767px) { [data-lottie-only='true'] { display: none !important; } }";
     document.head.appendChild(lottieOnlyStyle);
   }
   if (typeof lottie === "undefined") return;
