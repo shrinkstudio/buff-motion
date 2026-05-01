@@ -1,10 +1,45 @@
 // -----------------------------------------
 // MODAL (Shrink Boilerplate)
 // Dialog management with auto-open and cooldown
+//
+// Supports both <dialog> elements and div panels:
+//   <dialog>               — uses native showModal()/close()
+//   [data-modal-panel]     — uses class "is-open" + body scroll lock
+//
+// Triggers:
+//   dialog + button        — opens preceding <dialog>
+//   [data-modal="open"]    — with data-modal-target:
+//                             "sibling" = finds [data-modal-panel] or <dialog> in same parent
+//                             "#selector" = finds element by CSS selector
+//   [data-modal="close"]   — closes nearest modal (dialog or panel)
 // -----------------------------------------
 
 let dialogHandlers = [];
 let delegationBound = false;
+const OPEN_CLASS = "is-open";
+
+function openModal(modal) {
+  if (modal.tagName === "DIALOG") {
+    modal.showModal();
+  } else {
+    modal.classList.add(OPEN_CLASS);
+    document.body.style.overflow = "hidden";
+    // Stop Lenis if available
+    const lenis = window.__buffMotionLenis;
+    if (lenis) lenis.stop();
+  }
+}
+
+function closeModal(modal) {
+  if (modal.tagName === "DIALOG") {
+    modal.close();
+  } else {
+    modal.classList.remove(OPEN_CLASS);
+    document.body.style.overflow = "";
+    const lenis = window.__buffMotionLenis;
+    if (lenis) lenis.start();
+  }
+}
 
 // --- Document-level delegation (bind once in initOnceFunctions) ---
 
@@ -23,28 +58,33 @@ function handleModalClicks(e) {
   }
 
   // Handle data-modal="open" triggers with data-modal-target
-  // Use a selector (e.g. "#my-modal") or "sibling" to find the nearest
-  // dialog within the same parent container
   const openTrigger = target.closest('[data-modal="open"]');
   if (openTrigger) {
     e.preventDefault();
     const targetAttr = openTrigger.getAttribute("data-modal-target");
-    let dialog = null;
+    let modal = null;
 
     if (targetAttr === "sibling") {
-      dialog = openTrigger.parentElement?.querySelector("dialog");
+      modal = openTrigger.parentElement?.querySelector("dialog, [data-modal-panel]");
     } else if (targetAttr) {
-      dialog = document.querySelector(targetAttr);
+      modal = document.querySelector(targetAttr);
     }
 
-    if (dialog && dialog.tagName === "DIALOG") {
-      dialog.showModal();
-    }
+    if (modal) openModal(modal);
     return;
   }
 
   // Handle close modal buttons
-  if (target.closest('dialog button.modal_close-button, dialog button[data-modal="close"]')) {
+  const closeTrigger = target.closest('[data-modal="close"]');
+  if (closeTrigger) {
+    e.preventDefault();
+    const modal = closeTrigger.closest("dialog, [data-modal-panel]");
+    if (modal) closeModal(modal);
+    return;
+  }
+
+  // Legacy: dialog button.modal_close-button
+  if (target.closest('dialog button.modal_close-button')) {
     e.preventDefault();
     const dialog = target.closest("dialog");
     if (dialog) dialog.close();
@@ -136,22 +176,45 @@ function handleAutoOpenModal(dialog) {
 
 export function initModals(scope) {
   scope = scope || document;
-  const dialogs = scope.querySelectorAll("dialog");
-  if (dialogs.length === 0) return;
 
+  // Native dialogs
+  const dialogs = scope.querySelectorAll("dialog");
   dialogs.forEach(setupDialogClickOutside);
   dialogs.forEach(handleAutoOpenModal);
+
+  // Panel modals — click outside to close + Escape key
+  const panels = scope.querySelectorAll("[data-modal-panel]");
+  panels.forEach(panel => {
+    const clickHandler = function (e) {
+      // Close if clicking directly on the overlay (not content inside)
+      if (e.target === panel) closeModal(panel);
+    };
+    const keyHandler = function (e) {
+      if (e.key === "Escape" && panel.classList.contains(OPEN_CLASS)) {
+        closeModal(panel);
+      }
+    };
+    panel.addEventListener("click", clickHandler);
+    document.addEventListener("keydown", keyHandler);
+    dialogHandlers.push(
+      { element: panel, type: "click", handler: clickHandler },
+      { element: document, type: "keydown", handler: keyHandler }
+    );
+  });
 }
 
 export function destroyModals() {
-  // Close any open dialogs
+  // Close any open modals
   dialogHandlers.forEach(({ element }) => {
     if (element.tagName === "DIALOG" && element.open) {
       element.close();
     }
+    if (element.classList?.contains(OPEN_CLASS)) {
+      closeModal(element);
+    }
   });
 
-  // Remove per-dialog handlers
+  // Remove handlers
   dialogHandlers.forEach(({ element, type, handler }) => {
     element.removeEventListener(type, handler);
   });
