@@ -41,7 +41,7 @@ const has = (s) => !!nextPage.querySelector(s);
 let staggerDefault = 0.05;
 let durationDefault = 0.6;
 
-CustomEase.create("buff", "0.76, 0.007, 0.25, 1");
+CustomEase.create("buff", "M0,0 C1,0.0028 0,1.0005 1,1");
 gsap.defaults({ ease: "buff", duration: durationDefault });
 
 console.log("[buff] Bundle loaded — barba:", typeof barba, "gsap:", typeof gsap, "lenis:", hasLenis, "lottie:", typeof lottie);
