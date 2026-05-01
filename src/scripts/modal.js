@@ -22,6 +22,27 @@ function handleModalClicks(e) {
     return;
   }
 
+  // Handle data-modal="open" triggers with data-modal-target
+  // Use a selector (e.g. "#my-modal") or "sibling" to find the nearest
+  // dialog within the same parent container
+  const openTrigger = target.closest('[data-modal="open"]');
+  if (openTrigger) {
+    e.preventDefault();
+    const targetAttr = openTrigger.getAttribute("data-modal-target");
+    let dialog = null;
+
+    if (targetAttr === "sibling") {
+      dialog = openTrigger.parentElement?.querySelector("dialog");
+    } else if (targetAttr) {
+      dialog = document.querySelector(targetAttr);
+    }
+
+    if (dialog && dialog.tagName === "DIALOG") {
+      dialog.showModal();
+    }
+    return;
+  }
+
   // Handle close modal buttons
   if (target.closest('dialog button.modal_close-button, dialog button[data-modal="close"]')) {
     e.preventDefault();
