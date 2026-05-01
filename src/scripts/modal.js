@@ -24,9 +24,9 @@ function openModal(modal) {
   } else {
     modal.classList.add(OPEN_CLASS);
     document.body.style.overflow = "hidden";
-    // Stop Lenis if available
     const lenis = window.__buffMotionLenis;
     if (lenis) lenis.stop();
+    animateModalIn(modal);
   }
 }
 
@@ -34,10 +34,32 @@ function closeModal(modal) {
   if (modal.tagName === "DIALOG") {
     modal.close();
   } else {
+    gsap.killTweensOf(modal.querySelectorAll("*"));
     modal.classList.remove(OPEN_CLASS);
     document.body.style.overflow = "";
     const lenis = window.__buffMotionLenis;
     if (lenis) lenis.start();
+  }
+}
+
+function animateModalIn(modal) {
+  // Fade in the overlay
+  gsap.fromTo(modal, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.4 });
+
+  // Stagger children of the content container
+  const container = modal.querySelector("[data-modal-panel-content]");
+  if (container) {
+    const children = Array.from(container.children);
+    gsap.fromTo(children, {
+      autoAlpha: 0,
+      y: 40,
+    }, {
+      autoAlpha: 1,
+      y: 0,
+      duration: 0.8,
+      stagger: 0.1,
+      delay: 0.15,
+    });
   }
 }
 
