@@ -43,9 +43,7 @@ export function initTypeform(scope) {
       const formId = el.getAttribute("data-typeform");
       if (!formId || el.dataset.typeformInit) return;
       el.dataset.typeformInit = "true";
-      el.setAttribute("data-tf-widget", formId);
-      el.setAttribute("data-tf-inline-on-mobile", "");
-      el.setAttribute("data-tf-no-heading", "");
+      el.setAttribute("data-tf-live", formId);
       window.tf?.load?.();
     });
   });
