@@ -14,6 +14,7 @@ import { initSplitTextReveal, destroySplitTextReveal } from './split-text.js';
 import { initCopyClip, destroyCopyClip } from './copy-clip.js';
 import { initTOC, destroyTOC } from './toc.js';
 import { initContentReveal, destroyContentReveal } from './content-reveal.js';
+import { initTypeform, destroyTypeform } from './typeform.js';
 
 gsap.registerPlugin(CustomEase);
 if (typeof ScrollTrigger !== 'undefined') gsap.registerPlugin(ScrollTrigger);
@@ -112,6 +113,7 @@ function initBeforeEnterFunctions(next) {
   destroyCopyClip();
   destroyTOC();
   destroyContentReveal();
+  destroyTypeform();
 }
 
 function initAfterEnterFunctions(next) {
@@ -128,6 +130,7 @@ function initAfterEnterFunctions(next) {
   if (has('[data-copy]'))                           initCopyClip(nextPage);
   if (has('[data-toc-source]'))                     initTOC(nextPage);
   if (has('[data-reveal-group]'))                   initContentReveal(nextPage);
+  if (has('[data-typeform]'))                       initTypeform(nextPage);
 
   // Re-evaluate inline scripts inside the new container (Webflow embeds)
   reinitScripts(nextPage);
