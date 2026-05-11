@@ -15,6 +15,7 @@ import { initCopyClip, destroyCopyClip } from './copy-clip.js';
 import { initTOC, destroyTOC } from './toc.js';
 import { initContentReveal, destroyContentReveal } from './content-reveal.js';
 import { initTypeform, destroyTypeform } from './typeform.js';
+import { initCursorMarquee, destroyCursorMarquee } from './cursor-marquee.js';
 
 gsap.registerPlugin(CustomEase);
 if (typeof ScrollTrigger !== 'undefined') gsap.registerPlugin(ScrollTrigger);
@@ -114,6 +115,7 @@ function initBeforeEnterFunctions(next) {
   destroyTOC();
   destroyContentReveal();
   destroyTypeform();
+  destroyCursorMarquee();
 }
 
 function initAfterEnterFunctions(next) {
@@ -131,6 +133,7 @@ function initAfterEnterFunctions(next) {
   if (has('[data-toc-source]'))                     initTOC(nextPage);
   if (has('[data-reveal-group]'))                   initContentReveal(nextPage);
   if (has('[data-typeform]'))                       initTypeform(nextPage);
+  if (has('[data-cursor-marquee-status]'))          initCursorMarquee();
 
   // Re-evaluate inline scripts inside the new container (Webflow embeds)
   reinitScripts(nextPage);
