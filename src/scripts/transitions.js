@@ -16,6 +16,7 @@ import { initTOC, destroyTOC } from './toc.js';
 import { initContentReveal, destroyContentReveal } from './content-reveal.js';
 import { initTypeform, destroyTypeform } from './typeform.js';
 import { initCursorMarquee, destroyCursorMarquee } from './cursor-marquee.js';
+import { initLogoWall, destroyLogoWall } from './logo-wall.js';
 
 gsap.registerPlugin(CustomEase);
 if (typeof ScrollTrigger !== 'undefined') gsap.registerPlugin(ScrollTrigger);
@@ -116,6 +117,7 @@ function initBeforeEnterFunctions(next) {
   destroyContentReveal();
   destroyTypeform();
   destroyCursorMarquee();
+  destroyLogoWall();
 }
 
 function initAfterEnterFunctions(next) {
@@ -134,6 +136,7 @@ function initAfterEnterFunctions(next) {
   if (has('[data-reveal-group]'))                   initContentReveal(nextPage);
   if (has('[data-typeform]'))                       initTypeform(nextPage);
   if (has('[data-cursor-marquee-status]'))          initCursorMarquee();
+  if (has('[data-logo-wall-cycle-init]'))           initLogoWall(nextPage);
 
   // Re-evaluate inline scripts inside the new container (Webflow embeds)
   reinitScripts(nextPage);
