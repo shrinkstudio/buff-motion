@@ -179,7 +179,9 @@ function runPageLeaveAnimation(current, next) {
   const transitionPanelBottom = transitionWrap.querySelector("[data-transition-panel-bottom]");
   const transitionLottieEl = transitionWrap.querySelector("[data-transition-lottie]");
 
-  const tl = gsap.timeline();
+  const tl = gsap.timeline({
+    onComplete: () => { current.remove(); }
+  });
 
   if (reducedMotion) {
     return tl.set(current, { autoAlpha: 0 });
@@ -202,6 +204,10 @@ function runPageLeaveAnimation(current, next) {
 
   tl.set(transitionLottieEl, {
     autoAlpha: 1
+  }, 0);
+
+  tl.set(next, {
+    autoAlpha: 0
   }, 0);
 
   // Panel sweeps up from bottom to cover screen
@@ -241,9 +247,7 @@ function runPageLeaveAnimation(current, next) {
     duration: 1,
   }, 0);
 
-  return new Promise(resolve => {
-    tl.call(resolve);
-  });
+  return tl;
 }
 
 function runPageEnterAnimation(next) {
@@ -262,9 +266,6 @@ function runPageEnterAnimation(next) {
     return new Promise(resolve => tl.call(resolve, null, "pageReady"));
   }
 
-  // Hide next page until panel reveals it
-  tl.set(next, { autoAlpha: 0 }, 0);
-
   // Lottie plays during the leave — no gap before reveal
   tl.add("startEnter", 0.1);
 
@@ -279,6 +280,7 @@ function runPageEnterAnimation(next) {
   }, {
     yPercent: -200,
     duration: 1.2,
+    overwrite: "auto",
     immediateRender: false
   }, "startEnter");
 
@@ -288,6 +290,7 @@ function runPageEnterAnimation(next) {
   }, {
     yPercent: 200,
     duration: 1.2,
+    overwrite: "auto",
     immediateRender: false
   }, "startEnter");
 
@@ -377,6 +380,7 @@ barba.init({
   transitions: [
     {
       name: "default",
+      sync: true,
 
       async once(data) {
         initOnceFunctions();
