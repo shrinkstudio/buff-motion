@@ -1,102 +1,105 @@
 // -----------------------------------------
-// CURSOR MARQUEE EFFECT
-// Custom cursor that follows the pointer with
-// marquee text, activated by hovering elements
-// with data-cursor-marquee-text="Your Text"
+// DYNAMIC TEXT CURSOR (Edge Aware)
+// Custom cursor that follows the pointer,
+// shows text from hovered [data-cursor]
+// elements. Flips position near edges.
 // -----------------------------------------
 
-const HOVER_OUT_DELAY = 0.4;
-const FOLLOW_DURATION = 0.4;
-const SPEED_MULTIPLIER = 5;
+const X_OFFSET = 6;
+const Y_OFFSET = 140;
 
-let cursor = null;
+let cursorItem = null;
+let cursorParagraph = null;
 let targets = [];
 let xTo = null;
 let yTo = null;
-let pauseTimeout = null;
-let activeEl = null;
-let lastX = 0;
-let lastY = 0;
+let currentTarget = null;
+let lastText = '';
 let moveBound = null;
-let scrollBound = null;
+let enterHandlers = [];
 
-function playFor(el) {
-  if (!el) return;
-  if (pauseTimeout) clearTimeout(pauseTimeout);
-  const text = el.getAttribute("data-cursor-marquee-text") || "";
-  const sec = (text.length || 1) / SPEED_MULTIPLIER;
-  targets.forEach((t) => {
-    t.textContent = text;
-    t.style.animationPlayState = "running";
-    t.style.animationDuration = sec + "s";
-  });
-  cursor.setAttribute("data-cursor-marquee-status", "active");
-  activeEl = el;
-}
-
-function pauseLater() {
-  cursor.setAttribute("data-cursor-marquee-status", "not-active");
-  if (pauseTimeout) clearTimeout(pauseTimeout);
-  pauseTimeout = setTimeout(() => {
-    targets.forEach((t) => {
-      t.style.animationPlayState = "paused";
-    });
-  }, HOVER_OUT_DELAY * 1000);
-  activeEl = null;
-}
-
-function checkTarget() {
-  const el = document.elementFromPoint(lastX, lastY);
-  const hit = el && el.closest("[data-cursor-marquee-text]");
-  if (hit !== activeEl) {
-    if (activeEl) pauseLater();
-    if (hit) playFor(hit);
-  }
+function getCursorEdgeThreshold() {
+  return cursorItem.offsetWidth + 16;
 }
 
 function onPointerMove(e) {
-  lastX = e.clientX;
-  lastY = e.clientY;
-  xTo(lastX);
-  yTo(lastY);
-  checkTarget();
-}
+  const windowWidth = window.innerWidth;
+  const windowHeight = window.innerHeight;
+  const scrollY = window.scrollY;
+  const cursorX = e.clientX;
+  const cursorY = e.clientY + scrollY;
 
-function onScroll() {
-  xTo(lastX);
-  yTo(lastY);
-  checkTarget();
+  let xPercent = X_OFFSET;
+  let yPercent = Y_OFFSET;
+
+  // Flip X when cursor + label would overflow right edge
+  if (cursorX > windowWidth - getCursorEdgeThreshold()) {
+    xPercent = -100;
+  }
+
+  // Flip Y when in the bottom 10% of the viewport
+  if (cursorY > scrollY + windowHeight * 0.9) {
+    yPercent = -120;
+  }
+
+  // Update text if target changed
+  if (currentTarget) {
+    const newText = currentTarget.getAttribute("data-cursor");
+    if (newText !== lastText) {
+      cursorParagraph.innerHTML = newText;
+      lastText = newText;
+    }
+  }
+
+  gsap.to(cursorItem, { xPercent, yPercent, duration: 0.9, ease: "power3" });
+  xTo(cursorX);
+  yTo(cursorY - scrollY);
 }
 
 export function initCursorMarquee() {
-  cursor = document.querySelector("[data-cursor-marquee-status]");
-  if (!cursor) return;
-  targets = cursor.querySelectorAll("[data-cursor-marquee-text-target]");
+  cursorItem = document.querySelector(".cursor");
+  if (!cursorItem || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
 
-  xTo = gsap.quickTo(cursor, "x", { duration: FOLLOW_DURATION, ease: "power3" });
-  yTo = gsap.quickTo(cursor, "y", { duration: FOLLOW_DURATION, ease: "power3" });
+  cursorParagraph = cursorItem.querySelector("p");
+  if (!cursorParagraph) return;
+
+  targets = [...document.querySelectorAll("[data-cursor]")];
+
+  gsap.set(cursorItem, { xPercent: X_OFFSET, yPercent: Y_OFFSET });
+
+  xTo = gsap.quickTo(cursorItem, "x", { ease: "power3" });
+  yTo = gsap.quickTo(cursorItem, "y", { ease: "power3" });
 
   moveBound = onPointerMove;
-  scrollBound = onScroll;
+  window.addEventListener("mousemove", moveBound, { passive: true });
 
-  window.addEventListener("pointermove", moveBound, { passive: true });
-  window.addEventListener("scroll", scrollBound, { passive: true });
-
-  setTimeout(() => {
-    cursor.setAttribute("data-cursor-marquee-status", "not-active");
-  }, 500);
+  // Bind mouseenter per target
+  enterHandlers = targets.map(target => {
+    const handler = () => {
+      currentTarget = target;
+      const newText = target.getAttribute("data-cursor");
+      if (newText !== lastText) {
+        cursorParagraph.innerHTML = newText;
+        lastText = newText;
+      }
+    };
+    target.addEventListener("mouseenter", handler);
+    return { target, handler };
+  });
 }
 
 export function destroyCursorMarquee() {
-  if (moveBound) window.removeEventListener("pointermove", moveBound);
-  if (scrollBound) window.removeEventListener("scroll", scrollBound);
-  if (pauseTimeout) clearTimeout(pauseTimeout);
-  cursor = null;
+  if (moveBound) window.removeEventListener("mousemove", moveBound);
+  enterHandlers.forEach(({ target, handler }) => {
+    target.removeEventListener("mouseenter", handler);
+  });
+  cursorItem = null;
+  cursorParagraph = null;
   targets = [];
   xTo = null;
   yTo = null;
+  currentTarget = null;
+  lastText = '';
   moveBound = null;
-  scrollBound = null;
-  activeEl = null;
-  pauseTimeout = null;
+  enterHandlers = [];
 }

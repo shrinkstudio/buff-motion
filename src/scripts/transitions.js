@@ -135,7 +135,7 @@ function initAfterEnterFunctions(next) {
   if (has('[data-toc-source]'))                     initTOC(nextPage);
   if (has('[data-reveal-group]'))                   initContentReveal(nextPage);
   if (has('[data-typeform]'))                       initTypeform(nextPage);
-  if (has('[data-cursor-marquee-status]'))          initCursorMarquee();
+  if (has('.cursor'))                                initCursorMarquee();
   if (has('[data-logo-wall-cycle-init]'))           initLogoWall(nextPage);
 
   // Re-evaluate inline scripts inside the new container (Webflow embeds)
