@@ -17,6 +17,7 @@ import { initContentReveal, destroyContentReveal } from './content-reveal.js';
 import { initTypeform, destroyTypeform } from './typeform.js';
 import { initCursorMarquee, destroyCursorMarquee } from './cursor-marquee.js';
 import { initLogoWall, destroyLogoWall } from './logo-wall.js';
+import { initVideoHover, destroyVideoHover } from './video-hover.js';
 
 gsap.registerPlugin(CustomEase);
 if (typeof ScrollTrigger !== 'undefined') gsap.registerPlugin(ScrollTrigger);
@@ -118,6 +119,7 @@ function initBeforeEnterFunctions(next) {
   destroyTypeform();
   destroyCursorMarquee();
   destroyLogoWall();
+  destroyVideoHover();
 }
 
 function initAfterEnterFunctions(next) {
@@ -137,6 +139,7 @@ function initAfterEnterFunctions(next) {
   if (has('[data-typeform]'))                       initTypeform(nextPage);
   if (document.querySelector('.cursor'))             initCursorMarquee();
   if (has('[data-logo-wall-cycle-init]'))           initLogoWall(nextPage);
+  if (has('[data-video-on-hover]'))                initVideoHover(nextPage);
 
   // Re-evaluate inline scripts inside the new container (Webflow embeds)
   reinitScripts(nextPage);
