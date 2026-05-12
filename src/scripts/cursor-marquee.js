@@ -3,81 +3,85 @@
 // Custom cursor that follows the pointer,
 // shows text from hovered [data-cursor]
 // elements. Flips position near edges.
-// Global — lives outside Barba container.
+// Runs via DOMContentLoaded, independent of Barba.
 // -----------------------------------------
 
-const X_OFFSET = 6;
-const Y_OFFSET = 140;
+function initDynamicCustomTextCursor() {
+  let cursorItem = document.querySelector(".cursor");
+  if (!cursorItem) return;
 
-let cursorItem = null;
-let cursorParagraph = null;
-let xTo = null;
-let yTo = null;
-let currentTarget = null;
-let lastText = '';
-let bound = false;
+  let cursorParagraph = cursorItem.querySelector("p");
+  if (!cursorParagraph) return;
 
-function getCursorEdgeThreshold() {
-  return cursorItem.offsetWidth + 16;
-}
+  let targets = document.querySelectorAll("[data-cursor]");
+  let xOffset = 6;
+  let yOffset = 140;
+  let cursorIsOnRight = false;
+  let currentTarget = null;
+  let lastText = '';
 
-function onMouseMove(e) {
-  const windowWidth = window.innerWidth;
-  const windowHeight = window.innerHeight;
-  const scrollY = window.scrollY;
-  const cursorX = e.clientX;
-  const cursorY = e.clientY + scrollY;
+  gsap.set(cursorItem, { xPercent: xOffset, yPercent: yOffset });
 
-  let xPercent = X_OFFSET;
-  let yPercent = Y_OFFSET;
+  let xTo = gsap.quickTo(cursorItem, "x", { ease: "power3" });
+  let yTo = gsap.quickTo(cursorItem, "y", { ease: "power3" });
 
-  if (cursorX > windowWidth - getCursorEdgeThreshold()) {
-    xPercent = -100;
-  }
+  const getCursorEdgeThreshold = () => {
+    return cursorItem.offsetWidth + 16;
+  };
 
-  if (cursorY > scrollY + windowHeight * 0.9) {
-    yPercent = -120;
-  }
+  window.addEventListener("mousemove", e => {
+    let windowWidth = window.innerWidth;
+    let windowHeight = window.innerHeight;
+    let scrollY = window.scrollY;
+    let cursorX = e.clientX;
+    let cursorY = e.clientY + scrollY;
 
-  // Event delegation — check if mouse is over a [data-cursor] element
-  const hit = e.target.closest("[data-cursor]");
-  if (hit !== currentTarget) {
-    currentTarget = hit;
-    if (hit) {
-      const newText = hit.getAttribute("data-cursor");
+    let xPercent = xOffset;
+    let yPercent = yOffset;
+
+    let cursorEdgeThreshold = getCursorEdgeThreshold();
+    if (cursorX > windowWidth - cursorEdgeThreshold) {
+      cursorIsOnRight = true;
+      xPercent = -100;
+    } else {
+      cursorIsOnRight = false;
+    }
+
+    if (cursorY > scrollY + windowHeight * 0.9) {
+      yPercent = -120;
+    }
+
+    if (currentTarget) {
+      let newText = currentTarget.getAttribute("data-cursor");
+      if (newText !== lastText) {
+        cursorParagraph.innerHTML = newText;
+        lastText = newText;
+        cursorEdgeThreshold = getCursorEdgeThreshold();
+      }
+    }
+
+    gsap.to(cursorItem, { xPercent: xPercent, yPercent: yPercent, duration: 0.9, ease: "power3" });
+    xTo(cursorX);
+    yTo(cursorY - scrollY);
+  });
+
+  targets.forEach(target => {
+    target.addEventListener("mouseenter", () => {
+      currentTarget = target;
+
+      let newText = target.getAttribute("data-cursor");
       if (newText !== lastText) {
         cursorParagraph.innerHTML = newText;
         lastText = newText;
       }
-    }
-  }
-
-  gsap.to(cursorItem, { xPercent, yPercent, duration: 0.9, ease: "power3" });
-  xTo(cursorX);
-  yTo(cursorY - scrollY);
+    });
+  });
 }
 
-export function initCursorMarquee() {
-  if (bound) return; // already running — global, init once
+document.addEventListener("DOMContentLoaded", () => {
+  initDynamicCustomTextCursor();
+});
 
-  cursorItem = document.querySelector(".cursor");
-  if (!cursorItem || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
-
-  cursorParagraph = cursorItem.querySelector("p");
-  if (!cursorParagraph) return;
-
-  gsap.set(cursorItem, { xPercent: X_OFFSET, yPercent: Y_OFFSET });
-
-  xTo = gsap.quickTo(cursorItem, "x", { ease: "power3" });
-  yTo = gsap.quickTo(cursorItem, "y", { ease: "power3" });
-
-  window.addEventListener("mousemove", onMouseMove, { passive: true });
-  bound = true;
-}
-
-export function destroyCursorMarquee() {
-  // Global cursor — don't tear down on page transitions.
-  // Just reset hover state so stale targets don't persist.
-  currentTarget = null;
-  lastText = '';
-}
+// Keep exports so transitions.js doesn't break
+export function initCursorMarquee() {}
+export function destroyCursorMarquee() {}
