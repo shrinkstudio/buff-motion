@@ -18,6 +18,7 @@ import { initTypeform, destroyTypeform } from './typeform.js';
 import { initCursorMarquee, destroyCursorMarquee } from './cursor-marquee.js';
 import { initLogoWall, destroyLogoWall } from './logo-wall.js';
 import { initVideoHover, destroyVideoHover } from './video-hover.js';
+import { initUnderlayNav, destroyUnderlayNav } from './underlay-nav.js';
 
 gsap.registerPlugin(CustomEase);
 if (typeof ScrollTrigger !== 'undefined') gsap.registerPlugin(ScrollTrigger);
@@ -46,6 +47,7 @@ let staggerDefault = 0.05;
 let durationDefault = 0.6;
 
 CustomEase.create("buff", "M0,0 C1,0.0028 0,1.0005 1,1");
+CustomEase.create("energy", "M0,0 C0.32,0.72 0,1 1,1");
 gsap.defaults({ ease: "buff", duration: durationDefault });
 
 console.log("[buff] Bundle loaded — barba:", typeof barba, "gsap:", typeof gsap, "lenis:", hasLenis, "lottie:", typeof lottie);
@@ -100,6 +102,7 @@ function initOnceFunctions() {
   initModalDelegation();
   initFontSizeDetect();
   initSkipLink();
+  initUnderlayNav();
 }
 
 function initBeforeEnterFunctions(next) {
