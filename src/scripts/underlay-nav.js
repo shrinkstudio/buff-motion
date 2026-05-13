@@ -16,6 +16,21 @@ let overlayHandler = null;
 let keyHandler = null;
 let resizeHandler = null;
 
+// Prevent menu flash on load — CSS injected before JS init
+(function injectUnderlayCSS() {
+  if (document.getElementById("underlay-nav-defaults")) return;
+  const style = document.createElement("style");
+  style.id = "underlay-nav-defaults";
+  style.textContent = `
+    .underlay-nav__overlay { visibility: hidden; pointer-events: none; }
+    .underlay-nav [data-reveal-l],
+    .underlay-nav [data-reveal-s] { opacity: 0; visibility: hidden; }
+    .underlay-nav__bottom-border { transform: scaleX(0); }
+    .underlay-nav__dark { opacity: 0; }
+  `;
+  document.head.appendChild(style);
+})();
+
 export function initUnderlayNav() {
   toggleBtn = document.querySelector("[data-underlay-nav-toggle]");
   const toggleLabels = document.querySelectorAll(".underlay-nav__toggle-label");
@@ -29,6 +44,7 @@ export function initUnderlayNav() {
   const darkEl = document.querySelector(".underlay-nav__dark");
   const corners = document.querySelectorAll(".underlay-nav__corner");
   const overlayBorders = document.querySelectorAll(".underlay-nav__border-row");
+  const navBanner = document.querySelector("[data-nav-banner]");
 
   if (!toggleBtn || !menuEl || !mainEl || !overlayEl) return;
 
@@ -42,6 +58,7 @@ export function initUnderlayNav() {
   gsap.set(overlayEl, { visibility: "hidden", pointerEvents: "none" });
   gsap.set(darkEl, { autoAlpha: 0 });
   gsap.set(mainEl, { x: 0 });
+  if (navBanner) gsap.set(navBanner, { x: 0 });
   gsap.set(toggleLabels, { yPercent: 0 });
   gsap.set(toggleBars, { y: 0, rotation: 0 });
   gsap.set(menuBorder, { scaleX: 0 });
@@ -59,7 +76,9 @@ export function initUnderlayNav() {
 
   tl.set(overlayEl, { visibility: "visible", pointerEvents: "auto" }, 0);
 
-  tl.to([mainEl, overlayEl], {
+  const slideEls = navBanner ? [mainEl, overlayEl, navBanner] : [mainEl, overlayEl];
+
+  tl.to(slideEls, {
     x: getMenuOffset,
     duration: 0.7,
   }, 0)
@@ -142,7 +161,7 @@ export function initUnderlayNav() {
     duration: 0.3,
   }, "<")
 
-  .to([mainEl, overlayEl], {
+  .to(slideEls, {
     x: 0,
     duration: 0.6,
   }, "<")
@@ -227,7 +246,7 @@ export function initUnderlayNav() {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
       if (isOpen) {
-        gsap.set([mainEl, overlayEl], { x: getMenuOffset() });
+        gsap.set(slideEls, { x: getMenuOffset() });
       } else {
         tl.invalidate();
       }
