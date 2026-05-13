@@ -27,6 +27,7 @@ let resizeHandler = null;
     .underlay-nav [data-reveal-s] { opacity: 0; visibility: hidden; }
     .underlay-nav__bottom-border { transform: scaleX(0); }
     .underlay-nav__dark { opacity: 0; }
+    .underlay-nav__menu { visibility: hidden; }
   `;
   document.head.appendChild(style);
 })();
@@ -75,6 +76,7 @@ export function initUnderlayNav() {
   });
 
   tl.set(overlayEl, { visibility: "visible", pointerEvents: "auto" }, 0);
+  tl.set(menuEl, { visibility: "visible" }, 0);
 
   const slideEls = navBanner ? [mainEl, overlayEl, navBanner] : [mainEl, overlayEl];
 
@@ -208,6 +210,10 @@ export function initUnderlayNav() {
   .set(overlayEl, {
     visibility: "hidden",
     pointerEvents: "none"
+  })
+
+  .set(menuEl, {
+    visibility: "hidden"
   });
 
   // --- Event handlers ---
