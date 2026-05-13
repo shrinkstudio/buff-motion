@@ -2,7 +2,7 @@
 // FIXED UNDERLAY NAVIGATION
 // Menu sits behind page content at z:1,
 // page slides left to reveal it.
-// From Osmo's underlay nav pattern.
+// Lottie arrow button + background squiggle.
 // -----------------------------------------
 
 let toggleBtn = null;
@@ -15,6 +15,8 @@ let toggleHandler = null;
 let overlayHandler = null;
 let keyHandler = null;
 let resizeHandler = null;
+let arrowLottie = null;
+let bgLottie = null;
 
 // Prevent menu flash on load — CSS injected before JS init
 (function injectUnderlayCSS() {
@@ -28,9 +30,32 @@ let resizeHandler = null;
     .underlay-nav__bottom-border { transform: scaleX(0); }
     .underlay-nav__dark { opacity: 0; }
     .underlay-nav__menu { visibility: hidden; }
+    [data-nav-lottie-bg] { opacity: 0; }
   `;
   document.head.appendChild(style);
 })();
+
+// -----------------------------------------
+// LOTTIE HELPERS
+// -----------------------------------------
+
+function loadNavLottie(container) {
+  if (!container || typeof lottie === "undefined") return null;
+  const src = container.getAttribute("data-lottie-src") || container.getAttribute("data-src");
+  if (!src) return null;
+
+  return lottie.loadAnimation({
+    container,
+    renderer: "svg",
+    loop: false,
+    autoplay: false,
+    path: src,
+  });
+}
+
+// -----------------------------------------
+// INIT
+// -----------------------------------------
 
 export function initUnderlayNav() {
   toggleBtn = document.querySelector("[data-underlay-nav-toggle]");
@@ -46,8 +71,21 @@ export function initUnderlayNav() {
   const corners = document.querySelectorAll(".underlay-nav__corner");
   const overlayBorders = document.querySelectorAll(".underlay-nav__border-row");
   const navBanner = document.querySelector("[data-nav-banner]");
+  const arrowEl = document.querySelector("[data-nav-lottie-arrow]");
+  const bgEl = document.querySelector("[data-nav-lottie-bg]");
 
   if (!toggleBtn || !menuEl || !mainEl || !overlayEl) return;
+
+  // Load Lotties
+  arrowLottie = loadNavLottie(arrowEl);
+  bgLottie = loadNavLottie(bgEl);
+
+  // Arrow starts at frame 35 (closed state)
+  if (arrowLottie) {
+    arrowLottie.addEventListener("DOMLoaded", () => {
+      arrowLottie.goToAndStop(35, true);
+    });
+  }
 
   const closedColor = getComputedStyle(toggleBtn).color;
   const openColor = getComputedStyle(menuEl).color;
@@ -56,66 +94,74 @@ export function initUnderlayNav() {
 
   const getMenuOffset = () => -menuEl.offsetWidth;
 
+  // --- Initial states ---
   gsap.set(overlayEl, { visibility: "hidden", pointerEvents: "none" });
   gsap.set(darkEl, { autoAlpha: 0 });
   gsap.set(mainEl, { x: 0 });
   if (navBanner) gsap.set(navBanner, { x: 0 });
   gsap.set(toggleLabels, { yPercent: 0 });
   gsap.set(toggleBars, { y: 0, rotation: 0 });
-  gsap.set(menuBorder, { scaleX: 0 });
+  if (menuBorder) gsap.set(menuBorder, { scaleX: 0 });
   gsap.set(overlayBorders[0], { yPercent: -100 });
   gsap.set(overlayBorders[1], { yPercent: 100 });
   gsap.set(corners, { scale: 0 });
 
+  // --- Build timeline ---
   tl = gsap.timeline({
     paused: true,
     defaults: {
-      ease: "energy",
-      easeReverse: "power2.inOut"
+      ease: "buff",
     }
   });
 
+  const slideEls = navBanner ? [mainEl, overlayEl, navBanner] : [mainEl, overlayEl];
+
+  // Show menu + overlay
   tl.set(overlayEl, { visibility: "visible", pointerEvents: "auto" }, 0);
   tl.set(menuEl, { visibility: "visible" }, 0);
 
-  const slideEls = navBanner ? [mainEl, overlayEl, navBanner] : [mainEl, overlayEl];
-
+  // Page slides left to reveal menu
   tl.to(slideEls, {
     x: getMenuOffset,
     duration: 0.7,
   }, 0)
 
+  // Dark overlay fades in
   .to(darkEl, {
     autoAlpha: 1,
     duration: 0.5,
   }, 0)
 
+  // Corner radius scales in
   .to(corners, {
     scale: 1,
     duration: 0.5,
   }, 0)
 
+  // Border rows slide in
   .to(overlayBorders, {
     yPercent: 0,
     duration: 0.5,
   }, 0)
 
+  // Toggle label slides up (Menu → Close)
   .to(toggleLabels, {
     yPercent: -100,
     duration: 0.4,
   }, 0)
 
+  // Toggle button color changes
   .to(toggleBtn, {
     color: openColor,
     duration: 0.4,
   }, 0)
 
+  // Toggle bars animate to X
   .to(toggleBars[0], {
     y: "0.25em",
     rotation: 45,
     duration: 0.35,
     ease: "back.out(1.4)",
-    easeReverse: "power3.out",
   }, 0.05)
 
   .to(toggleBars[1], {
@@ -123,62 +169,101 @@ export function initUnderlayNav() {
     rotation: -45,
     duration: 0.35,
     ease: "back.out(1.4)",
-    easeReverse: "power3.out",
   }, 0.05)
 
+  // Nav links animate in from top — buff ease, staggered
   .fromTo(largeItems,
-    { autoAlpha: 0, xPercent: 25 },
+    { autoAlpha: 0, yPercent: -40 },
     {
       autoAlpha: 1,
-      xPercent: 0,
-      duration: 0.7,
-      stagger: 0.05,
+      yPercent: 0,
+      duration: 0.6,
+      stagger: 0.06,
+      ease: "buff",
     },
-    0
+    0.15
   )
 
+  // Small items (socials, quick links) fade up
   .fromTo(smallItems,
-    { autoAlpha: 0, yPercent: 100 },
+    { autoAlpha: 0, yPercent: 50 },
     {
       autoAlpha: 1,
       yPercent: 0,
       duration: 0.5,
       stagger: 0.03,
-      ease: "power3.out"
+      ease: "buff",
     },
-    0.3
+    0.35
   )
 
-  .to(menuBorder, {
-    scaleX: 1,
-    duration: 0.5,
-  }, "<");
+  // Bottom border scales in
+  if (menuBorder) {
+    tl.to(menuBorder, {
+      scaleX: 1,
+      duration: 0.5,
+    }, "<");
+  }
+
+  // BG lottie fades in
+  if (bgEl) {
+    tl.to(bgEl, {
+      autoAlpha: 1,
+      duration: 0.4,
+    }, 0.1);
+  }
+
+  // Lottie callbacks — fire during timeline
+  tl.call(() => {
+    if (arrowLottie) {
+      arrowLottie.setDirection(1);
+      arrowLottie.goToAndPlay(35, true);
+    }
+    if (bgLottie) {
+      bgLottie.goToAndPlay(0, true);
+    }
+  }, null, 0);
 
   enterEndTime = tl.duration();
 
+  // --- Close phase (after addPause) ---
   tl.addPause();
 
+  // Items fade out
   tl.to([largeItems, smallItems], {
     autoAlpha: 0,
-    duration: 0.3,
+    duration: 0.25,
   }, "<")
 
-  .to(slideEls, {
+  // BG lottie fades out
+  if (bgEl) {
+    tl.to(bgEl, {
+      autoAlpha: 0,
+      duration: 0.25,
+    }, "<");
+  }
+
+  // Page slides back
+  tl.to(slideEls, {
     x: 0,
     duration: 0.6,
+    ease: "power2.inOut",
   }, "<")
 
+  // Dark overlay fades
   .to(darkEl, {
     autoAlpha: 0,
     duration: 0.35,
     ease: "power2.inOut",
   }, "<")
 
+  // Corners scale out
   .to(corners, {
     scale: 0,
     duration: 0.5,
   }, "<")
 
+  // Border rows slide out
   .to(overlayBorders[0], {
     yPercent: -100,
     duration: 0.5,
@@ -189,17 +274,20 @@ export function initUnderlayNav() {
     duration: 0.5,
   }, "<")
 
+  // Toggle button color back
   .to(toggleBtn, {
     color: closedColor,
     duration: 0.25,
   }, "<+=0.1")
 
+  // Toggle labels back
   .to(toggleLabels, {
     yPercent: 0,
     duration: 0.25,
     ease: "power3.in",
   }, "<")
 
+  // Toggle bars back
   .to(toggleBars, {
     y: 0,
     rotation: 0,
@@ -207,6 +295,7 @@ export function initUnderlayNav() {
     ease: "power3.in",
   }, "<")
 
+  // Hide overlay + menu
   .set(overlayEl, {
     visibility: "hidden",
     pointerEvents: "none"
@@ -215,6 +304,11 @@ export function initUnderlayNav() {
   .set(menuEl, {
     visibility: "hidden"
   });
+
+  // Border reset
+  if (menuBorder) {
+    tl.set(menuBorder, { scaleX: 0 });
+  }
 
   // --- Event handlers ---
 
@@ -229,6 +323,12 @@ export function initUnderlayNav() {
       if (tl.time() >= enterEndTime) tl.timeScale(1).restart();
       else tl.timeScale(1).play();
     } else {
+      // Reverse arrow Lottie on close
+      if (arrowLottie) {
+        arrowLottie.setDirection(-1);
+        arrowLottie.play();
+      }
+
       if (tl.time() < enterEndTime) tl.timeScale(1).reverse();
       else tl.timeScale(1).play();
     }
@@ -267,6 +367,8 @@ export function destroyUnderlayNav() {
   if (keyHandler) document.removeEventListener("keydown", keyHandler);
   if (resizeHandler) window.removeEventListener("resize", resizeHandler);
   if (tl) { tl.kill(); tl = null; }
+  if (arrowLottie) { arrowLottie.destroy(); arrowLottie = null; }
+  if (bgLottie) { bgLottie.destroy(); bgLottie = null; }
   clearTimeout(resizeTimer);
   toggleBtn = null;
   overlayEl = null;
