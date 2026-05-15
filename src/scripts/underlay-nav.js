@@ -116,10 +116,6 @@ export function initUnderlayNav() {
 
   const slideEls = navBanner ? [mainEl, overlayEl, navBanner] : [mainEl, overlayEl];
 
-  // Show menu + overlay
-  tl.set(overlayEl, { visibility: "visible", pointerEvents: "auto" }, 0);
-  tl.set(menuEl, { visibility: "visible" }, 0);
-
   // Page slides left to reveal menu
   tl.to(slideEls, {
     x: getMenuOffset,
@@ -295,20 +291,25 @@ export function initUnderlayNav() {
     ease: "power3.in",
   }, "<")
 
-  // Hide overlay + menu
-  .set(overlayEl, {
-    visibility: "hidden",
-    pointerEvents: "none"
-  })
-
-  .set(menuEl, {
-    visibility: "hidden"
-  });
-
-  // Border reset
+  // Border reset (visibility is handled synchronously in toggle / onReverseComplete)
   if (menuBorder) {
     tl.set(menuBorder, { scaleX: 0 });
   }
+
+  tl.eventCallback("onReverseComplete", () => {
+    overlayEl.style.visibility = "hidden";
+    overlayEl.style.pointerEvents = "none";
+    menuEl.style.visibility = "hidden";
+  });
+
+  tl.eventCallback("onComplete", () => {
+    // Fires at end of close phase (forward past addPause)
+    if (!isOpen) {
+      overlayEl.style.visibility = "hidden";
+      overlayEl.style.pointerEvents = "none";
+      menuEl.style.visibility = "hidden";
+    }
+  });
 
   // --- Event handlers ---
 
@@ -319,6 +320,11 @@ export function initUnderlayNav() {
     document.body.setAttribute("data-menu-status", isOpen ? "open" : "");
 
     if (isOpen) {
+      // Flip visibility synchronously so the menu is paintable before the page starts sliding
+      overlayEl.style.visibility = "visible";
+      overlayEl.style.pointerEvents = "auto";
+      menuEl.style.visibility = "visible";
+
       tl.invalidate();
       if (tl.time() >= enterEndTime) tl.timeScale(1).restart();
       else tl.timeScale(1).play();
