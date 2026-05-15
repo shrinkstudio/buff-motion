@@ -19,6 +19,7 @@ import { initCursorMarquee, destroyCursorMarquee } from './cursor-marquee.js';
 import { initLogoWall, destroyLogoWall } from './logo-wall.js';
 import { initVideoHover, destroyVideoHover } from './video-hover.js';
 import { initUnderlayNav, destroyUnderlayNav } from './underlay-nav.js';
+import { initSocialShare, destroySocialShare } from './social-share.js';
 
 gsap.registerPlugin(CustomEase);
 if (typeof ScrollTrigger !== 'undefined') gsap.registerPlugin(ScrollTrigger);
@@ -123,6 +124,7 @@ function initBeforeEnterFunctions(next) {
   destroyCursorMarquee();
   destroyLogoWall();
   destroyVideoHover();
+  destroySocialShare();
 }
 
 function initAfterEnterFunctions(next) {
@@ -143,6 +145,7 @@ function initAfterEnterFunctions(next) {
   if (document.querySelector('.cursor'))             initCursorMarquee();
   if (has('[data-logo-wall-cycle-init]'))           initLogoWall(nextPage);
   if (has('[data-video-on-hover]'))                initVideoHover(nextPage);
+  if (has('[data-social-share]'))                  initSocialShare(nextPage);
 
   // Re-evaluate inline scripts inside the new container (Webflow embeds)
   reinitScripts(nextPage);
