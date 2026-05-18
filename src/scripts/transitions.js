@@ -34,9 +34,10 @@ let onceFunctionsInitialized = false;
 // Transition Lottie — loaded once, replayed each transition
 let transitionLottie = null;
 
-// TEMP: disable wipe transitions during styling/client review.
-// Flip back to true to restore the Lottie/panel page transition.
+// TEMP: disable animations during styling/client review.
+// Flip both back to true to restore the wipe + text-reveal.
 const ENABLE_PAGE_TRANSITIONS = false;
+const ENABLE_TEXT_REVEAL = false;
 
 const hasLenis = typeof window.Lenis !== "undefined";
 const hasScrollTrigger = typeof window.ScrollTrigger !== "undefined";
@@ -141,7 +142,14 @@ function initAfterEnterFunctions(next) {
   if (has('dialog'))                                initModals(nextPage);
   if (has('[data-footer-year]'))                    initFooterYear(nextPage);
   if (has('[data-lottie]'))                         initLottieAnimations(nextPage);
-  if (has('[data-split]'))                          initSplitTextReveal(nextPage);
+  if (has('[data-split]')) {
+    if (ENABLE_TEXT_REVEAL) {
+      initSplitTextReveal(nextPage);
+    } else {
+      // TEMP — reveal animation disabled. Force split headings visible so FOUC CSS doesn't keep them hidden.
+      nextPage.querySelectorAll('[data-split="heading"]').forEach(el => gsap.set(el, { autoAlpha: 1 }));
+    }
+  }
   if (has('[data-copy]'))                           initCopyClip(nextPage);
   if (has('[data-toc-source]'))                     initTOC(nextPage);
   // TEMP — disabled during styling/client review. Uncomment to restore reveal-on-scroll.
