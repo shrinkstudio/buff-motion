@@ -87,24 +87,30 @@ export function initSidenav(scope) {
 
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  // Timeline-scoped defaults — explicit buff ease + 0.9s so the menu glides like the V1 site.
-  tl = gsap.timeline({ defaults: { ease: "buff", duration: 0.9 } });
-
   const setBodyState = (open) => {
     document.body.setAttribute("data-menu-status", open ? "open" : "");
+  };
+
+  // Build a fresh timeline on every toggle so the playhead can't get stranded past the
+  // new tweens' duration when we clear() + re-chain (the bug behind "close does nothing").
+  const buildTimeline = () => {
+    if (tl) tl.kill();
+    tl = gsap.timeline({ defaults: { ease: "buff", duration: 0.9 } });
+    return tl;
   };
 
   const openNav = () => {
     navWrap.setAttribute("data-nav-state", "open");
     setBodyState(true);
 
+    buildTimeline();
+
     if (reducedMotion) {
-      tl.clear().set(navWrap, { display: "block", autoAlpha: 1 });
+      tl.set(navWrap, { display: "block", autoAlpha: 1 });
       return;
     }
 
-    tl.clear()
-      .set(navWrap, { display: "block" })
+    tl.set(navWrap, { display: "block" })
       .set(menu, { xPercent: 0 }, "<")
       // Phase 1 (0 — ~0.55s): panels wipe in fast, overlay dims, button label flips
       .fromTo(overlay, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.45 }, 0)
@@ -136,12 +142,14 @@ export function initSidenav(scope) {
     navWrap.setAttribute("data-nav-state", "closed");
     setBodyState(false);
 
+    buildTimeline();
+
     if (reducedMotion) {
-      tl.clear().set(navWrap, { display: "none" });
+      tl.set(navWrap, { display: "none" });
       return;
     }
 
-    tl.clear()
+    tl
       // Inner content drops out first, snappy
       .to(fadeTargets, { autoAlpha: 0, yPercent: 20, stagger: 0.02, duration: 0.25 }, 0)
       .to(menuLinks, { autoAlpha: 0, yPercent: 40, stagger: 0.03, duration: 0.35 }, 0.05)
