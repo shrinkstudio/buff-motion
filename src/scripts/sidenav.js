@@ -14,14 +14,18 @@
 //   [data-sidenav-button]   — the toggle button containing label + icon
 //   [data-sidenav-label]    — the button labels (Menu/Close — vertical swap, optional)
 //   [data-sidenav-icon]     — the button icon (rotates on open — only if no Lottie present)
-//   [data-nav-lottie-arrow] + [data-lottie-src]  — optional Lottie arrow inside the button
-//                                                  Holds at frame 35, plays fwd on open, reverses on close.
+//   [data-nav-lottie-arrow] + [data-lottie-src]  — optional Lottie arrow inside the button.
+//                                                  Holds at the configured closed frame, plays to the open
+//                                                  frame on open, and back on close.
+//   [data-nav-lottie-bg]    + [data-lottie-src]  — optional background Lottie inside the menu.
+//                                                  Plays from frame 0 every time the menu opens.
 
 let tl = null;
 let navWrap = null;
 let toggleHandlers = [];
 let keyHandler = null;
 let arrowLottie = null;
+let bgLottie = null;
 
 function loadNavLottie(container) {
   if (!container || typeof lottie === "undefined") return null;
@@ -72,6 +76,13 @@ export function initSidenav(scope) {
     arrowLottie.addEventListener("DOMLoaded", () => arrowLottie.goToAndStop(closedFrame, true));
   }
 
+  // Background Lottie inside the menu — held at frame 0 until menu opens
+  const bgLottieEl = document.querySelector("[data-nav-lottie-bg]");
+  bgLottie = loadNavLottie(bgLottieEl);
+  if (bgLottie) {
+    bgLottie.addEventListener("DOMLoaded", () => bgLottie.goToAndStop(0, true));
+  }
+
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   // Timeline-scoped defaults — does not override global gsap defaults ("buff" ease)
@@ -106,6 +117,11 @@ export function initSidenav(scope) {
       }, null, 0);
     } else if (menuButtonIcon) {
       tl.fromTo(menuButtonIcon, { rotate: 0 }, { rotate: 315 }, 0);
+    }
+
+    // Background Lottie replays its intro from frame 0 every time the menu opens
+    if (bgLottie) {
+      tl.call(() => bgLottie.goToAndPlay(0, true), null, 0);
     }
   };
 
@@ -165,6 +181,10 @@ export function destroySidenav() {
   if (arrowLottie) {
     arrowLottie.destroy();
     arrowLottie = null;
+  }
+  if (bgLottie) {
+    bgLottie.destroy();
+    bgLottie = null;
   }
   navWrap = null;
 }
