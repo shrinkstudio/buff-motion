@@ -102,6 +102,7 @@ export function initSidenav(scope) {
   const openNav = () => {
     navWrap.setAttribute("data-nav-state", "open");
     setBodyState(true);
+    if (window.__buffMotionLenis) window.__buffMotionLenis.stop();
 
     buildTimeline();
 
@@ -141,6 +142,7 @@ export function initSidenav(scope) {
   const closeNav = () => {
     navWrap.setAttribute("data-nav-state", "closed");
     setBodyState(false);
+    if (window.__buffMotionLenis) window.__buffMotionLenis.start();
 
     buildTimeline();
 
