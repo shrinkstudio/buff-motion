@@ -45,10 +45,8 @@ export function initSidenav(scope) {
   navWrap = scope.querySelector("[data-sidenav-wrap]");
   if (!navWrap) return;
 
-  // Register the sidenav-specific ease (idempotent) without touching global gsap defaults
-  if (typeof CustomEase !== "undefined" && !gsap.parseEase("sidenav")) {
-    CustomEase.create("sidenav", "0.65, 0.01, 0.05, 0.99");
-  }
+  // The "buff" ease is registered globally in transitions.js (cubic-bezier(.76, .007, .25, 1)).
+  // Used throughout the sidenav timeline below.
 
   const overlay = navWrap.querySelector("[data-sidenav-overlay]");
   const menu = navWrap.querySelector("[data-sidenav-menu]");
@@ -85,8 +83,8 @@ export function initSidenav(scope) {
 
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  // Timeline-scoped defaults — does not override global gsap defaults ("buff" ease)
-  tl = gsap.timeline({ defaults: { ease: "sidenav", duration: 0.7 } });
+  // Timeline-scoped defaults — explicit buff ease + 0.9s so the menu glides like the V1 site.
+  tl = gsap.timeline({ defaults: { ease: "buff", duration: 0.9 } });
 
   const setBodyState = (open) => {
     document.body.setAttribute("data-menu-status", open ? "open" : "");
@@ -104,11 +102,20 @@ export function initSidenav(scope) {
     tl.clear()
       .set(navWrap, { display: "block" })
       .set(menu, { xPercent: 0 }, "<")
-      .fromTo(menuButtonTexts, { yPercent: 0 }, { yPercent: -100, stagger: 0.2 })
-      .fromTo(overlay, { autoAlpha: 0 }, { autoAlpha: 1 }, "<")
-      .fromTo(bgPanels, { xPercent: 101 }, { xPercent: 0, stagger: 0.12, duration: 0.575 }, "<")
-      .fromTo(menuLinks, { yPercent: 140, rotate: 10 }, { yPercent: 0, rotate: 0, stagger: 0.05 }, "<+=0.35")
-      .fromTo(fadeTargets, { autoAlpha: 0, yPercent: 50 }, { autoAlpha: 1, yPercent: 0, stagger: 0.04 }, "<+=0.2");
+      // Overlay dim + panel wipe + label slide all begin together
+      .fromTo(overlay, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.6 }, 0)
+      .fromTo(menuButtonTexts, { yPercent: 0 }, { yPercent: -100, stagger: 0.06, duration: 0.5 }, 0)
+      .fromTo(bgPanels, { xPercent: 101 }, { xPercent: 0, stagger: 0.08, duration: 1 }, 0)
+      // Links rise + fade in once the panels have most of the wipe done
+      .fromTo(menuLinks,
+        { yPercent: 110, autoAlpha: 0 },
+        { yPercent: 0, autoAlpha: 1, stagger: 0.07, duration: 0.9 },
+        0.35)
+      // Socials/details ride in just behind the links
+      .fromTo(fadeTargets,
+        { autoAlpha: 0, yPercent: 30 },
+        { autoAlpha: 1, yPercent: 0, stagger: 0.04, duration: 0.6 },
+        0.55);
 
     // Lottie arrow plays from current frame to the open frame. Fallback: rotate the static icon.
     if (arrowLottie) {
@@ -135,9 +142,15 @@ export function initSidenav(scope) {
     }
 
     tl.clear()
-      .to(overlay, { autoAlpha: 0 })
-      .to(menu, { xPercent: 120 }, "<")
-      .to(menuButtonTexts, { yPercent: 0 }, "<")
+      // Inner content fades down first
+      .to(fadeTargets, { autoAlpha: 0, yPercent: 20, stagger: 0.03, duration: 0.3 }, 0)
+      .to(menuLinks, { autoAlpha: 0, yPercent: 40, stagger: 0.04, duration: 0.45 }, 0.05)
+      // Panels wipe back out, staggered the same way
+      .to(bgPanels, { xPercent: 101, stagger: 0.06, duration: 0.7 }, 0.1)
+      // Overlay fades + button label slides in tandem
+      .to(overlay, { autoAlpha: 0, duration: 0.5 }, 0.15)
+      .to(menuButtonTexts, { yPercent: 0, duration: 0.5 }, 0.1)
+      // Hide the wrap once everything has cleared
       .set(navWrap, { display: "none" });
 
     // Lottie arrow plays from current frame back to the closed frame. Fallback: rotate the static icon back.
