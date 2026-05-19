@@ -58,9 +58,17 @@ export function initSidenav(scope) {
   const arrowLottieEl = document.querySelector("[data-nav-lottie-arrow]");
 
   // Load arrow Lottie + hold at frame 35 (closed state)
+  console.log("[buff] sidenav init", { arrowLottieEl, hasLottie: typeof lottie, src: arrowLottieEl && arrowLottieEl.getAttribute("data-lottie-src") });
   arrowLottie = loadNavLottie(arrowLottieEl);
+  console.log("[buff] sidenav arrowLottie:", arrowLottie);
   if (arrowLottie) {
-    arrowLottie.addEventListener("DOMLoaded", () => arrowLottie.goToAndStop(35, true));
+    arrowLottie.addEventListener("DOMLoaded", () => {
+      console.log("[buff] sidenav DOMLoaded — frame to 35");
+      arrowLottie.goToAndStop(35, true);
+    });
+    arrowLottie.addEventListener("data_failed", () => {
+      console.error("[buff] sidenav Lottie data_failed");
+    });
   }
 
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
