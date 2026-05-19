@@ -18,7 +18,7 @@ import { initTypeform, destroyTypeform } from './typeform.js';
 import { initCursorMarquee, destroyCursorMarquee } from './cursor-marquee.js';
 import { initLogoWall, destroyLogoWall } from './logo-wall.js';
 import { initVideoHover, destroyVideoHover } from './video-hover.js';
-import { initUnderlayNav, destroyUnderlayNav } from './underlay-nav.js';
+import { initSidenav, destroySidenav } from './sidenav.js';
 import { initSocialShare, destroySocialShare } from './social-share.js';
 
 gsap.registerPlugin(CustomEase);
@@ -108,7 +108,7 @@ function initOnceFunctions() {
   initModalDelegation();
   initFontSizeDetect();
   initSkipLink();
-  initUnderlayNav();
+  initSidenav();
 }
 
 function initBeforeEnterFunctions(next) {
