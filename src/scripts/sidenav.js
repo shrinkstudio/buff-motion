@@ -57,11 +57,16 @@ export function initSidenav(scope) {
   const menuButtonIcon = menuButton ? menuButton.querySelector("[data-sidenav-icon]") : null;
   const arrowLottieEl = document.querySelector("[data-nav-lottie-arrow]");
 
-  // Load arrow Lottie + hold at the configured "closed" frame (default 35).
-  // Override per-element via [data-lottie-frame="N"] on the Lottie element.
+  // Load arrow Lottie + hold at the configured "closed" frame.
+  // Override per-element on the Lottie element via:
+  //   [data-lottie-frame="N"]        — closed/resting frame (default 35)
+  //   [data-lottie-open-frame="N"]   — open/active frame (default 60)
   const closedFrame = arrowLottieEl
     ? parseInt(arrowLottieEl.getAttribute("data-lottie-frame") || "35", 10)
     : 35;
+  const openFrame = arrowLottieEl
+    ? parseInt(arrowLottieEl.getAttribute("data-lottie-open-frame") || "60", 10)
+    : 60;
   arrowLottie = loadNavLottie(arrowLottieEl);
   if (arrowLottie) {
     arrowLottie.addEventListener("DOMLoaded", () => arrowLottie.goToAndStop(closedFrame, true));
@@ -94,11 +99,10 @@ export function initSidenav(scope) {
       .fromTo(menuLinks, { yPercent: 140, rotate: 10 }, { yPercent: 0, rotate: 0, stagger: 0.05 }, "<+=0.35")
       .fromTo(fadeTargets, { autoAlpha: 0, yPercent: 50 }, { autoAlpha: 1, yPercent: 0, stagger: 0.04 }, "<+=0.2");
 
-    // Lottie arrow plays forward from the configured closed frame. Fallback: rotate the static icon.
+    // Lottie arrow plays from current frame to the open frame. Fallback: rotate the static icon.
     if (arrowLottie) {
       tl.call(() => {
-        arrowLottie.setDirection(1);
-        arrowLottie.goToAndPlay(closedFrame, true);
+        arrowLottie.playSegments([arrowLottie.currentFrame, openFrame], true);
       }, null, 0);
     } else if (menuButtonIcon) {
       tl.fromTo(menuButtonIcon, { rotate: 0 }, { rotate: 315 }, 0);
@@ -120,11 +124,10 @@ export function initSidenav(scope) {
       .to(menuButtonTexts, { yPercent: 0 }, "<")
       .set(navWrap, { display: "none" });
 
-    // Lottie arrow plays in reverse on close. Fallback: rotate the static icon back.
+    // Lottie arrow plays from current frame back to the closed frame. Fallback: rotate the static icon back.
     if (arrowLottie) {
       tl.call(() => {
-        arrowLottie.setDirection(-1);
-        arrowLottie.play();
+        arrowLottie.playSegments([arrowLottie.currentFrame, closedFrame], true);
       }, null, 0);
     } else if (menuButtonIcon) {
       tl.to(menuButtonIcon, { rotate: 0 }, 0);
