@@ -12,13 +12,29 @@
 //   [data-sidenav-link]     — menu links (stagger up + un-rotate)
 //   [data-sidenav-fade]     — secondary fade-in targets (socials, labels)
 //   [data-sidenav-button]   — the toggle button containing label + icon
-//   [data-sidenav-label]    — the button labels (Menu/Close — vertical swap)
-//   [data-sidenav-icon]     — the button icon (rotates on open)
+//   [data-sidenav-label]    — the button labels (Menu/Close — vertical swap, optional)
+//   [data-sidenav-icon]     — the button icon (rotates on open — only if no Lottie present)
+//   [data-nav-lottie-arrow] + [data-lottie-src]  — optional Lottie arrow inside the button
+//                                                  Holds at frame 35, plays fwd on open, reverses on close.
 
 let tl = null;
 let navWrap = null;
 let toggleHandlers = [];
 let keyHandler = null;
+let arrowLottie = null;
+
+function loadNavLottie(container) {
+  if (!container || typeof lottie === "undefined") return null;
+  const src = container.getAttribute("data-lottie-src") || container.getAttribute("data-src");
+  if (!src) return null;
+  return lottie.loadAnimation({
+    container,
+    renderer: "svg",
+    loop: false,
+    autoplay: false,
+    path: src,
+  });
+}
 
 export function initSidenav(scope) {
   scope = scope || document;
@@ -39,6 +55,13 @@ export function initSidenav(scope) {
   const menuButton = document.querySelector("[data-sidenav-button]");
   const menuButtonTexts = menuButton ? menuButton.querySelectorAll("[data-sidenav-label]") : [];
   const menuButtonIcon = menuButton ? menuButton.querySelector("[data-sidenav-icon]") : null;
+  const arrowLottieEl = document.querySelector("[data-nav-lottie-arrow]");
+
+  // Load arrow Lottie + hold at frame 35 (closed state)
+  arrowLottie = loadNavLottie(arrowLottieEl);
+  if (arrowLottie) {
+    arrowLottie.addEventListener("DOMLoaded", () => arrowLottie.goToAndStop(35, true));
+  }
 
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -62,11 +85,20 @@ export function initSidenav(scope) {
       .set(navWrap, { display: "block" })
       .set(menu, { xPercent: 0 }, "<")
       .fromTo(menuButtonTexts, { yPercent: 0 }, { yPercent: -100, stagger: 0.2 })
-      .fromTo(menuButtonIcon, { rotate: 0 }, { rotate: 315 }, "<")
       .fromTo(overlay, { autoAlpha: 0 }, { autoAlpha: 1 }, "<")
       .fromTo(bgPanels, { xPercent: 101 }, { xPercent: 0, stagger: 0.12, duration: 0.575 }, "<")
       .fromTo(menuLinks, { yPercent: 140, rotate: 10 }, { yPercent: 0, rotate: 0, stagger: 0.05 }, "<+=0.35")
       .fromTo(fadeTargets, { autoAlpha: 0, yPercent: 50 }, { autoAlpha: 1, yPercent: 0, stagger: 0.04 }, "<+=0.2");
+
+    // Lottie arrow plays forward from frame 35. Fallback: rotate the static icon.
+    if (arrowLottie) {
+      tl.call(() => {
+        arrowLottie.setDirection(1);
+        arrowLottie.goToAndPlay(35, true);
+      }, null, 0);
+    } else if (menuButtonIcon) {
+      tl.fromTo(menuButtonIcon, { rotate: 0 }, { rotate: 315 }, 0);
+    }
   };
 
   const closeNav = () => {
@@ -82,8 +114,17 @@ export function initSidenav(scope) {
       .to(overlay, { autoAlpha: 0 })
       .to(menu, { xPercent: 120 }, "<")
       .to(menuButtonTexts, { yPercent: 0 }, "<")
-      .to(menuButtonIcon, { rotate: 0 }, "<")
       .set(navWrap, { display: "none" });
+
+    // Lottie arrow plays in reverse on close. Fallback: rotate the static icon back.
+    if (arrowLottie) {
+      tl.call(() => {
+        arrowLottie.setDirection(-1);
+        arrowLottie.play();
+      }, null, 0);
+    } else if (menuButtonIcon) {
+      tl.to(menuButtonIcon, { rotate: 0 }, 0);
+    }
   };
 
   const toggle = () => {
@@ -113,6 +154,10 @@ export function destroySidenav() {
   if (tl) {
     tl.kill();
     tl = null;
+  }
+  if (arrowLottie) {
+    arrowLottie.destroy();
+    arrowLottie = null;
   }
   navWrap = null;
 }
