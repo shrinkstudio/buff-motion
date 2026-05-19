@@ -106,12 +106,13 @@ export function initSidenav(scope) {
     tl.clear()
       .set(navWrap, { display: "block" })
       .set(menu, { xPercent: 0 }, "<")
-      // Phase 1: nav opens — panels wipe in + overlay dims + button label flips
-      .fromTo(overlay, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.5 }, 0)
-      .fromTo(menuButtonTexts, { yPercent: 0 }, { yPercent: -100, stagger: 0.06, duration: 0.5 }, 0)
-      .fromTo(bgPanels, { xPercent: 101 }, { xPercent: 0, stagger: 0.08, duration: 1.1 }, 0)
-      // Phase 2: items animate in — starts as the last panel is just settling,
-      // squiggle is mid-draw, button-lottie has reached open frame
+      // Phase 1 (0 — ~0.55s): panels wipe in fast, overlay dims, button label flips
+      .fromTo(overlay, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.45 }, 0)
+      .fromTo(menuButtonTexts, { yPercent: 0 }, { yPercent: -100, stagger: 0.05, duration: 0.45 }, 0)
+      .fromTo(bgPanels, { xPercent: 101 }, { xPercent: 0, stagger: 0.06, duration: 0.55 }, 0)
+      // Phase 2 (~0.5s onwards): bg squiggle starts drawing into the now-settled panels
+      .call(() => { if (bgLottie) bgLottie.goToAndPlay(0, true); }, null, 0.5)
+      // Phase 3 (~0.55s onwards): items animate in on top of the drawing squiggle
       .fromTo(menuLinks,
         { yPercent: 120, autoAlpha: 0 },
         { yPercent: 0, autoAlpha: 1, stagger: 0.08, duration: 0.9 },
@@ -121,18 +122,13 @@ export function initSidenav(scope) {
         { autoAlpha: 1, yPercent: 0, stagger: 0.04, duration: 0.6 },
         0.8);
 
-    // Lottie arrow plays from current frame to the open frame. Fallback: rotate the static icon.
+    // Arrow Lottie plays at t=0 — must react instantly to the click, not delayed.
     if (arrowLottie) {
       tl.call(() => {
         arrowLottie.playSegments([arrowLottie.currentFrame, openFrame], true);
       }, null, 0);
     } else if (menuButtonIcon) {
       tl.fromTo(menuButtonIcon, { rotate: 0 }, { rotate: 315 }, 0);
-    }
-
-    // Background Lottie replays its intro from frame 0 every time the menu opens
-    if (bgLottie) {
-      tl.call(() => bgLottie.goToAndPlay(0, true), null, 0);
     }
   };
 
@@ -172,8 +168,10 @@ export function initSidenav(scope) {
     }
   };
 
-  const toggle = () => {
+  const toggle = (e) => {
     const state = navWrap.getAttribute("data-nav-state");
+    const source = e && e.currentTarget ? (e.currentTarget.getAttribute("data-sidenav-overlay") !== null ? "overlay" : "button") : "?";
+    console.log("[buff] sidenav toggle", { from: source, state });
     if (state === "open") closeNav();
     else openNav();
   };
@@ -182,6 +180,7 @@ export function initSidenav(scope) {
     el.addEventListener("click", toggle);
     toggleHandlers.push({ el, handler: toggle });
   });
+  console.log("[buff] sidenav toggles bound:", menuToggles.length);
 
   keyHandler = (e) => {
     if (e.key === "Escape" && navWrap.getAttribute("data-nav-state") === "open") {
