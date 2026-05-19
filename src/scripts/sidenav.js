@@ -57,18 +57,14 @@ export function initSidenav(scope) {
   const menuButtonIcon = menuButton ? menuButton.querySelector("[data-sidenav-icon]") : null;
   const arrowLottieEl = document.querySelector("[data-nav-lottie-arrow]");
 
-  // Load arrow Lottie + hold at frame 35 (closed state)
-  console.log("[buff] sidenav init", { arrowLottieEl, hasLottie: typeof lottie, src: arrowLottieEl && arrowLottieEl.getAttribute("data-lottie-src") });
+  // Load arrow Lottie + hold at the configured "closed" frame (default 35).
+  // Override per-element via [data-lottie-frame="N"] on the Lottie element.
+  const closedFrame = arrowLottieEl
+    ? parseInt(arrowLottieEl.getAttribute("data-lottie-frame") || "35", 10)
+    : 35;
   arrowLottie = loadNavLottie(arrowLottieEl);
-  console.log("[buff] sidenav arrowLottie:", arrowLottie);
   if (arrowLottie) {
-    arrowLottie.addEventListener("DOMLoaded", () => {
-      console.log("[buff] sidenav DOMLoaded — frame to 35");
-      arrowLottie.goToAndStop(35, true);
-    });
-    arrowLottie.addEventListener("data_failed", () => {
-      console.error("[buff] sidenav Lottie data_failed");
-    });
+    arrowLottie.addEventListener("DOMLoaded", () => arrowLottie.goToAndStop(closedFrame, true));
   }
 
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -98,11 +94,11 @@ export function initSidenav(scope) {
       .fromTo(menuLinks, { yPercent: 140, rotate: 10 }, { yPercent: 0, rotate: 0, stagger: 0.05 }, "<+=0.35")
       .fromTo(fadeTargets, { autoAlpha: 0, yPercent: 50 }, { autoAlpha: 1, yPercent: 0, stagger: 0.04 }, "<+=0.2");
 
-    // Lottie arrow plays forward from frame 35. Fallback: rotate the static icon.
+    // Lottie arrow plays forward from the configured closed frame. Fallback: rotate the static icon.
     if (arrowLottie) {
       tl.call(() => {
         arrowLottie.setDirection(1);
-        arrowLottie.goToAndPlay(35, true);
+        arrowLottie.goToAndPlay(closedFrame, true);
       }, null, 0);
     } else if (menuButtonIcon) {
       tl.fromTo(menuButtonIcon, { rotate: 0 }, { rotate: 315 }, 0);
