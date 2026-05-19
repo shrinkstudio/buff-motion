@@ -61,14 +61,18 @@ export function initSidenav(scope) {
 
   // Load arrow Lottie + hold at the configured "closed" frame.
   // Override per-element on the Lottie element via:
-  //   [data-lottie-frame="N"]        — closed/resting frame (default 35)
-  //   [data-lottie-open-frame="N"]   — open/active frame (default 60)
+  //   [data-lottie-frame="N"]            — closed/resting frame (default 35)
+  //   [data-lottie-open-frame="N"]       — open/active frame (default 70)
+  //   [data-lottie-close-end-frame="N"]  — frame to play to on close before resetting (default 100)
   const closedFrame = arrowLottieEl
     ? parseInt(arrowLottieEl.getAttribute("data-lottie-frame") || "35", 10)
     : 35;
   const openFrame = arrowLottieEl
-    ? parseInt(arrowLottieEl.getAttribute("data-lottie-open-frame") || "60", 10)
-    : 60;
+    ? parseInt(arrowLottieEl.getAttribute("data-lottie-open-frame") || "70", 10)
+    : 70;
+  const closeEndFrame = arrowLottieEl
+    ? parseInt(arrowLottieEl.getAttribute("data-lottie-close-end-frame") || "100", 10)
+    : 100;
   arrowLottie = loadNavLottie(arrowLottieEl);
   if (arrowLottie) {
     arrowLottie.addEventListener("DOMLoaded", () => arrowLottie.goToAndStop(closedFrame, true));
@@ -102,20 +106,20 @@ export function initSidenav(scope) {
     tl.clear()
       .set(navWrap, { display: "block" })
       .set(menu, { xPercent: 0 }, "<")
-      // Overlay dim + panel wipe + label slide all begin together
-      .fromTo(overlay, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.6 }, 0)
+      // Phase 1: nav opens — panels wipe in + overlay dims + button label flips
+      .fromTo(overlay, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.5 }, 0)
       .fromTo(menuButtonTexts, { yPercent: 0 }, { yPercent: -100, stagger: 0.06, duration: 0.5 }, 0)
-      .fromTo(bgPanels, { xPercent: 101 }, { xPercent: 0, stagger: 0.08, duration: 1 }, 0)
-      // Links rise + fade in once the panels have most of the wipe done
+      .fromTo(bgPanels, { xPercent: 101 }, { xPercent: 0, stagger: 0.08, duration: 1.1 }, 0)
+      // Phase 2: items animate in — starts as the last panel is just settling,
+      // squiggle is mid-draw, button-lottie has reached open frame
       .fromTo(menuLinks,
-        { yPercent: 110, autoAlpha: 0 },
-        { yPercent: 0, autoAlpha: 1, stagger: 0.07, duration: 0.9 },
-        0.35)
-      // Socials/details ride in just behind the links
+        { yPercent: 120, autoAlpha: 0 },
+        { yPercent: 0, autoAlpha: 1, stagger: 0.08, duration: 0.9 },
+        0.55)
       .fromTo(fadeTargets,
         { autoAlpha: 0, yPercent: 30 },
         { autoAlpha: 1, yPercent: 0, stagger: 0.04, duration: 0.6 },
-        0.55);
+        0.8);
 
     // Lottie arrow plays from current frame to the open frame. Fallback: rotate the static icon.
     if (arrowLottie) {
@@ -142,21 +146,26 @@ export function initSidenav(scope) {
     }
 
     tl.clear()
-      // Inner content fades down first
-      .to(fadeTargets, { autoAlpha: 0, yPercent: 20, stagger: 0.03, duration: 0.3 }, 0)
-      .to(menuLinks, { autoAlpha: 0, yPercent: 40, stagger: 0.04, duration: 0.45 }, 0.05)
+      // Inner content drops out first, snappy
+      .to(fadeTargets, { autoAlpha: 0, yPercent: 20, stagger: 0.02, duration: 0.25 }, 0)
+      .to(menuLinks, { autoAlpha: 0, yPercent: 40, stagger: 0.03, duration: 0.35 }, 0.05)
       // Panels wipe back out, staggered the same way
-      .to(bgPanels, { xPercent: 101, stagger: 0.06, duration: 0.7 }, 0.1)
-      // Overlay fades + button label slides in tandem
-      .to(overlay, { autoAlpha: 0, duration: 0.5 }, 0.15)
-      .to(menuButtonTexts, { yPercent: 0, duration: 0.5 }, 0.1)
-      // Hide the wrap once everything has cleared
+      .to(bgPanels, { xPercent: 101, stagger: 0.05, duration: 0.7 }, 0.15)
+      // Overlay fades + button label slides in tandem with the panels
+      .to(overlay, { autoAlpha: 0, duration: 0.5 }, 0.2)
+      .to(menuButtonTexts, { yPercent: 0, duration: 0.45 }, 0.15)
       .set(navWrap, { display: "none" });
 
-    // Lottie arrow plays from current frame back to the closed frame. Fallback: rotate the static icon back.
+    // Lottie arrow plays from current frame forward to the close-end frame,
+    // then silently resets to the closed frame (visually identical pose) ready for next open.
     if (arrowLottie) {
       tl.call(() => {
-        arrowLottie.playSegments([arrowLottie.currentFrame, closedFrame], true);
+        const onComplete = () => {
+          arrowLottie.removeEventListener("complete", onComplete);
+          arrowLottie.goToAndStop(closedFrame, true);
+        };
+        arrowLottie.addEventListener("complete", onComplete);
+        arrowLottie.playSegments([arrowLottie.currentFrame, closeEndFrame], true);
       }, null, 0);
     } else if (menuButtonIcon) {
       tl.to(menuButtonIcon, { rotate: 0 }, 0);
