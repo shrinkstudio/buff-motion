@@ -178,10 +178,8 @@ export function initSidenav(scope) {
     }
   };
 
-  const toggle = (e) => {
+  const toggle = () => {
     const state = navWrap.getAttribute("data-nav-state");
-    const source = e && e.currentTarget ? (e.currentTarget.getAttribute("data-sidenav-overlay") !== null ? "overlay" : "button") : "?";
-    console.log("[buff] sidenav toggle", { from: source, state });
     if (state === "open") closeNav();
     else openNav();
   };
@@ -190,7 +188,6 @@ export function initSidenav(scope) {
     el.addEventListener("click", toggle);
     toggleHandlers.push({ el, handler: toggle });
   });
-  console.log("[buff] sidenav toggles bound:", menuToggles.length);
 
   keyHandler = (e) => {
     if (e.key === "Escape" && navWrap.getAttribute("data-nav-state") === "open") {
