@@ -152,15 +152,16 @@ export function initSidenav(scope) {
     }
 
     tl
-      // Inner content drops out first, snappy
-      .to(fadeTargets, { autoAlpha: 0, yPercent: 20, stagger: 0.02, duration: 0.25 }, 0)
-      .to(menuLinks, { autoAlpha: 0, yPercent: 40, stagger: 0.03, duration: 0.35 }, 0.05)
-      // Panels wipe back out, staggered the same way
-      .to(bgPanels, { xPercent: 101, stagger: 0.05, duration: 0.7 }, 0.15)
-      // Overlay fades + button label slides in tandem with the panels
-      .to(overlay, { autoAlpha: 0, duration: 0.5 }, 0.2)
-      .to(menuButtonTexts, { yPercent: 0, duration: 0.45 }, 0.15)
-      .set(navWrap, { display: "none" });
+      // Inner content drops out fast so nothing trails as the menu slides
+      .to([menuLinks, fadeTargets], { autoAlpha: 0, duration: 0.25 }, 0)
+      // Whole menu container slides off — carries panels, bg Lottie, everything
+      .to(menu, { xPercent: 120, duration: 0.7 }, 0.05)
+      // Overlay fades + button label resets alongside the slide
+      .to(overlay, { autoAlpha: 0, duration: 0.5 }, 0.1)
+      .to(menuButtonTexts, { yPercent: 0, duration: 0.45 }, 0.05)
+      // Hide wrap once it's all cleared, then reset panels off-screen ready for the next open's wipe-in
+      .set(navWrap, { display: "none" })
+      .set(bgPanels, { xPercent: 101 });
 
     // Lottie arrow plays from current frame forward to the close-end frame,
     // then silently resets to the closed frame (visually identical pose) ready for next open.
