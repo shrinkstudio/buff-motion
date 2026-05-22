@@ -20,6 +20,7 @@ import { initLogoWall, destroyLogoWall } from './logo-wall.js';
 import { initVideoHover, destroyVideoHover } from './video-hover.js';
 import { initSidenav, destroySidenav } from './sidenav.js';
 import { initSocialShare, destroySocialShare } from './social-share.js';
+import { initFilter, destroyFilter } from './filter.js';
 
 gsap.registerPlugin(CustomEase);
 if (typeof ScrollTrigger !== 'undefined') gsap.registerPlugin(ScrollTrigger);
@@ -130,6 +131,7 @@ function initBeforeEnterFunctions(next) {
   destroyLogoWall();
   destroyVideoHover();
   destroySocialShare();
+  destroyFilter();
 }
 
 function initAfterEnterFunctions(next) {
@@ -159,6 +161,7 @@ function initAfterEnterFunctions(next) {
   if (has('[data-logo-wall-cycle-init]'))           initLogoWall(nextPage);
   if (has('[data-video-on-hover]'))                initVideoHover(nextPage);
   if (has('[data-social-share]'))                  initSocialShare(nextPage);
+  if (has('[data-filter-group]'))                  initFilter(nextPage);
 
   // Re-evaluate inline scripts inside the new container (Webflow embeds)
   reinitScripts(nextPage);
