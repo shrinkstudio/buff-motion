@@ -17,7 +17,20 @@
 
 let tl = null;
 let lottieAnim = null;
-let initialised = false;
+let hasPlayed = false;
+
+// Instantly dismiss the panel + start the video, no animation.
+// Used when the user SPA-navigates BACK to Home after the intro already played once.
+function dismissInstantly(root) {
+  root.style.display = "none";
+  document.body.setAttribute("data-home-intro-status", "done");
+  const videoWrap = document.querySelector("[data-home-hero-video]");
+  const videoEl = videoWrap ? videoWrap.querySelector("video") : null;
+  if (videoEl) {
+    const p = videoEl.play();
+    if (p && typeof p.catch === "function") p.catch(() => {});
+  }
+}
 
 function loadIntroLottie(container) {
   if (!container || typeof lottie === "undefined") return null;
@@ -33,11 +46,17 @@ function loadIntroLottie(container) {
 }
 
 export function initHomeIntro(scope) {
-  if (initialised) return;          // belt and braces — never run twice
   scope = scope || document;
   const root = scope.querySelector("[data-home-intro]");
   if (!root) return;
-  initialised = true;
+
+  if (hasPlayed) {
+    // Already played on first load — user is SPA-navigating back to Home.
+    // Skip the intro and just reveal the page.
+    dismissInstantly(root);
+    return;
+  }
+  hasPlayed = true;
 
   const words = root.querySelectorAll("[data-home-intro-word]");
   const lottieEl = root.querySelector("[data-home-intro-lottie]");
@@ -123,5 +142,6 @@ export function initHomeIntro(scope) {
 export function destroyHomeIntro() {
   if (tl) { tl.kill(); tl = null; }
   if (lottieAnim) { lottieAnim.destroy(); lottieAnim = null; }
-  initialised = false;
+  // hasPlayed is intentionally NOT reset — once the intro has played in this
+  // session it stays played, so SPA-to-Home doesn't replay it.
 }

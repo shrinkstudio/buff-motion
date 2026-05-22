@@ -166,6 +166,7 @@ function initAfterEnterFunctions(next) {
   if (has('[data-video-on-hover]'))                initVideoHover(nextPage);
   if (has('[data-social-share]'))                  initSocialShare(nextPage);
   if (has('[data-filter-group]'))                  initFilter(nextPage);
+  if (has('[data-home-intro]'))                    initHomeIntro(nextPage);
 
   // Re-evaluate inline scripts inside the new container (Webflow embeds)
   reinitScripts(nextPage);
