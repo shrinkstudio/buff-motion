@@ -21,6 +21,7 @@ import { initVideoHover, destroyVideoHover } from './video-hover.js';
 import { initSidenav, destroySidenav } from './sidenav.js';
 import { initSocialShare, destroySocialShare } from './social-share.js';
 import { initFilter, destroyFilter } from './filter.js';
+import { initHomeIntro, destroyHomeIntro } from './home-intro.js';
 
 gsap.registerPlugin(CustomEase);
 if (typeof ScrollTrigger !== 'undefined') gsap.registerPlugin(ScrollTrigger);
@@ -110,6 +111,9 @@ function initOnceFunctions() {
   initFontSizeDetect();
   initSkipLink();
   initSidenav();
+
+  // Home page preloader animation — only fires on first page load and only when the panel exists
+  if (document.querySelector('[data-home-intro]')) initHomeIntro();
 }
 
 function initBeforeEnterFunctions(next) {
