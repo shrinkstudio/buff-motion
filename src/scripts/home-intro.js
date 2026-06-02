@@ -26,6 +26,23 @@ let tl = null;
 let lottieAnim = null;
 let hasPlayed = false;
 
+// FOUC fallback — hides intro items immediately on bundle load.
+// Best practice is to ALSO add this rule to the Home page's <head> custom code
+// so it's in place before HTML parsing finishes.
+(function injectHomeIntroCSS() {
+  if (typeof document === "undefined") return;
+  if (document.getElementById("home-intro-defaults")) return;
+  const style = document.createElement("style");
+  style.id = "home-intro-defaults";
+  style.textContent = `
+    html:not(.wf-design-mode) [data-home-intro-item] {
+      opacity: 0;
+      visibility: hidden;
+    }
+  `;
+  document.head.appendChild(style);
+})();
+
 // Instantly dismiss the panel + start the video, no animation.
 // Used when the user SPA-navigates BACK to Home after the intro already played once.
 function dismissInstantly(root) {
@@ -105,8 +122,14 @@ export function initHomeIntro(scope) {
   tl = gsap.timeline({
     defaults: { ease: "buff", duration: 0.6 },
     onComplete() {
-      // Cleanup once the panel is fully off-screen
-      root.style.visibility = "hidden";
+      // Cleanup once the panel is fully off-screen — remove from DOM entirely.
+      // First-load only, never replays, so no reason to keep the markup around.
+      // (Also kills any future paint / accessibility-tree cost from the hidden panel.)
+      if (lottieAnim) {
+        lottieAnim.destroy();
+        lottieAnim = null;
+      }
+      root.remove();
       unlockScroll();
       if (window.__buffMotionLenis) window.__buffMotionLenis.start();
       document.body.setAttribute("data-home-intro-status", "done");
