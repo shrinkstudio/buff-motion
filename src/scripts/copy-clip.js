@@ -8,6 +8,7 @@
 //   [data-copy="sibling"]       — sibling target scoped to trigger's parent (optional)
 //   [data-copy-text]            — hardcoded string to copy (overrides target)
 //   [data-copy-message]         — success message shown on trigger after copy
+//   [data-copy-message-target]  — child element of trigger where message swaps in (overrides the auto-detected h*/span/p; use when trigger has an icon span you don't want overwritten)
 //   [data-copy-duration]        — ms to hold success state (default: 1000)
 //   [data-copy-active-class]    — class added during success state (default: "is-copied")
 //
@@ -73,8 +74,11 @@ function copy(trigger, e) {
     // Store original text and swap if message provided
     var originalText = null;
     if (message) {
-      // Prefer a heading/span/p inside the trigger so we don't blast button icons
-      var textEl = trigger.querySelector('h1,h2,h3,h4,h5,h6,span,p') || trigger;
+      // Prefer an explicit [data-copy-message-target] child, then fall back to
+      // a heading/span/p inside the trigger, then the trigger itself.
+      var textEl = trigger.querySelector('[data-copy-message-target]')
+        || trigger.querySelector('h1,h2,h3,h4,h5,h6,span,p')
+        || trigger;
       originalText = textEl.textContent;
       textEl.textContent = message;
       trigger._copyTextEl = textEl;
