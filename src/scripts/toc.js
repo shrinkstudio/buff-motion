@@ -2,18 +2,32 @@
 // TABLE OF CONTENTS
 // Generates a TOC from headings inside [data-toc-source],
 // clones [data-toc-link] template for each heading,
-// outputs into [data-toc-list], tracks active heading.
+// outputs into [data-toc-list], tracks active heading via ScrollTrigger.
 //
 // Attrs:
 //   [data-toc-source]     — content element to scan for headings
+//   [data-toc-mark]       — on an element inside the source, mark it as a TOC
+//                           entry explicitly. When any marks exist, they override
+//                           the heading scan entirely (use for templates that list
+//                           eyebrows like "the problem" rather than headings).
+//                           Optional value sets level, e.g. data-toc-mark="3".
 //   [data-toc-list]       — container to output generated links
 //   [data-toc-link]       — template link element (cloned per heading, removed after)
+//   [data-toc-text]       — child of template that receives heading text (optional)
+//   [data-toc-levels]     — comma-separated levels to include (default: "h2,h3,h4,h5,h6")
 //   [data-toc-offset]     — scroll offset in px (default: nav height or 0)
+//   [data-toc-ignore]     — on a heading, exclude it from the TOC
 //   [data-toc-hide-hash]  — "true" to suppress URL hash updates
 //   [data-toc-active]     — class added to active link (default: "is-active")
+//
+// Inline marker:
+//   "{skip}" in a heading's text excludes it from the TOC and is stripped
+//   from the visible heading.
 // -----------------------------------------
 
-let observer = null;
+const SKIP_MARKER = '{skip}';
+
+let scrollTriggers = [];
 let clickHandlers = [];
 let templateEl = null;
 
@@ -31,8 +45,38 @@ export function initTOC(scope) {
   const offsetAttr = document.querySelector('[data-toc-offset]')?.dataset.tocOffset;
   const offset = offsetAttr ? parseInt(offsetAttr, 10) : null;
 
-  // Scan headings
-  const headings = Array.from(source.querySelectorAll('h2, h3, h4, h5, h6'));
+  // Resolve entries: explicit [data-toc-mark] elements override the heading scan.
+  // Lets templates list marked elements (e.g. eyebrows) instead of auto-scanning
+  // headings. With no marks present, fall back to scanning by heading level.
+  const marked = Array.from(source.querySelectorAll('[data-toc-mark]'));
+  let candidates;
+
+  if (marked.length) {
+    candidates = marked;
+  } else {
+    const levelsAttr = source.closest('[data-toc-levels]')?.dataset.tocLevels
+      || list.closest('[data-toc-levels]')?.dataset.tocLevels;
+    const levels = (levelsAttr || 'h2,h3,h4,h5,h6')
+      .split(',')
+      .map(l => l.trim().toLowerCase())
+      .filter(l => /^h[1-6]$/.test(l));
+    if (!levels.length) return;
+    candidates = Array.from(source.querySelectorAll(levels.join(',')));
+  }
+
+  // Apply ignore + {skip} + empty filters
+  const headings = [];
+
+  candidates.forEach(el => {
+    if (el.hasAttribute('data-toc-ignore')) return;
+    if (el.textContent.includes(SKIP_MARKER)) {
+      stripMarker(el);
+      return;
+    }
+    if (!el.textContent.trim()) return;
+    headings.push(el);
+  });
+
   if (!headings.length) return;
 
   // Remove template from DOM but keep reference
@@ -42,7 +86,6 @@ export function initTOC(scope) {
 
   // Build links
   const links = [];
-  const headingMap = new Map();
 
   headings.forEach((heading, i) => {
     // Ensure heading has an ID
@@ -66,8 +109,12 @@ export function initTOC(scope) {
     const textEl = link.querySelector('[data-toc-text]') || link;
     textEl.textContent = heading.textContent.trim();
 
-    // Set heading level as data attr for optional CSS indentation
-    link.dataset.tocLevel = heading.tagName.replace('H', '');
+    // Set level for optional CSS indentation:
+    // explicit data-toc-mark="2|3|…" wins, else heading tag number, else 2.
+    const markVal = heading.dataset.tocMark;
+    link.dataset.tocLevel = (markVal && /^[1-6]$/.test(markVal))
+      ? markVal
+      : (/^H[1-6]$/.test(heading.tagName) ? heading.tagName.replace('H', '') : '2');
 
     // Set href
     if (link.tagName === 'A') {
@@ -79,7 +126,6 @@ export function initTOC(scope) {
 
     list.appendChild(link);
     links.push(link);
-    headingMap.set(heading, link);
   });
 
   // Click handling — smooth scroll via Lenis
@@ -109,30 +155,37 @@ export function initTOC(scope) {
     clickHandlers.push({ el: clickTarget, handler });
   });
 
-  // Active state tracking via IntersectionObserver
-  const rootMargin = offset !== null
-    ? `-${offset}px 0px -60% 0px`
-    : `-${getCSSNavHeight()}px 0px -60% 0px`;
+  // Active state tracking via ScrollTrigger
+  if (typeof ScrollTrigger !== 'undefined') {
+    const scrollOffset = offset !== null ? offset : getCSSNavHeight();
 
-  let activeLink = null;
+    function setActive(index) {
+      links.forEach(link => link.classList.remove(activeClass));
+      if (links[index]) links[index].classList.add(activeClass);
+    }
 
-  observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      const link = headingMap.get(entry.target);
-      if (!link) return;
+    headings.forEach((heading, i) => {
+      const nextHeading = headings[i + 1];
 
-      if (entry.isIntersecting) {
-        if (activeLink) activeLink.classList.remove(activeClass);
-        link.classList.add(activeClass);
-        activeLink = link;
-      }
+      const trigger = ScrollTrigger.create({
+        trigger: heading,
+        start: `top ${scrollOffset + 1}px`,
+        endTrigger: nextHeading || source,
+        end: nextHeading ? `top ${scrollOffset + 1}px` : 'bottom top',
+        onToggle: self => {
+          if (self.isActive) setActive(i);
+        }
+      });
+
+      scrollTriggers.push(trigger);
     });
-  }, {
-    rootMargin,
-    threshold: 0
-  });
 
-  headings.forEach(h => observer.observe(h));
+    // Initial active state — first heading if we're above it
+    const firstTop = headings[0].getBoundingClientRect().top + window.scrollY;
+    if (window.scrollY <= firstTop - scrollOffset) {
+      setActive(0);
+    }
+  }
 
   // Handle initial hash
   if (window.location.hash) {
@@ -152,14 +205,22 @@ export function initTOC(scope) {
 }
 
 export function destroyTOC() {
-  if (observer) {
-    observer.disconnect();
-    observer = null;
-  }
+  scrollTriggers.forEach(trigger => trigger.kill());
+  scrollTriggers = [];
   clickHandlers.forEach(({ el, handler }) => {
     el.removeEventListener('click', handler);
   });
   clickHandlers = [];
+}
+
+function stripMarker(el) {
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  let node;
+  while ((node = walker.nextNode())) {
+    if (node.textContent.includes(SKIP_MARKER)) {
+      node.textContent = node.textContent.replace(SKIP_MARKER, '').trim();
+    }
+  }
 }
 
 function slugify(text) {
