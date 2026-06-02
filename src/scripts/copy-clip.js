@@ -2,7 +2,8 @@
 // COPY TO CLIPBOARD — Click-to-copy with success state
 // -----------------------------------------
 // Attributes:
-//   [data-copy="trigger"]       — clickable element
+//   [data-copy="trigger"]       — clickable element; resolves text via target/sibling/text-attr/textContent
+//   [data-copy="link"]          — clickable <a>; copies its href as an absolute URL (for CMS slug-bound links)
 //   [data-copy="target"]        — element whose text gets copied (optional)
 //   [data-copy="sibling"]       — sibling target scoped to trigger's parent (optional)
 //   [data-copy-text]            — hardcoded string to copy (overrides target)
@@ -16,8 +17,21 @@ function handleClick(e) {
   var trigger = e.currentTarget;
   if (trigger._copyBusy) return;
 
+  // Link mode — copy the trigger's href as an absolute URL.
+  // Used for CMS-bound anchors where the href is built by Webflow (e.g. /utm/{slug}).
+  if (trigger.getAttribute('data-copy') === 'link') {
+    e.preventDefault();
+  }
+
   // Resolve text to copy
   var text = trigger.getAttribute('data-copy-text');
+
+  if (!text && trigger.getAttribute('data-copy') === 'link') {
+    var href = trigger.getAttribute('href') || '';
+    if (href) {
+      try { text = new URL(href, window.location.origin).href; } catch (err) { text = href; }
+    }
+  }
 
   if (!text) {
     var target = null;
@@ -66,7 +80,7 @@ function handleClick(e) {
 
 export function initCopyClip(scope) {
   scope = scope || document;
-  var triggers = scope.querySelectorAll('[data-copy="trigger"]');
+  var triggers = scope.querySelectorAll('[data-copy="trigger"], [data-copy="link"]');
   if (!triggers.length) return;
 
   triggers.forEach(function (trigger) {
