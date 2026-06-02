@@ -6,14 +6,21 @@
 // -----------------------------------------
 // Attributes:
 //   [data-home-intro]              — root panel (full-screen overlay)
-//   [data-home-intro-word]         — each word in the headline (rises in with stagger)
-//   [data-home-intro-buff]         — the wrapping element for the word "Buff" (Lottie anchor)
-//   [data-home-intro-lottie]       — Lottie container, paired with [data-lottie-src]
+//   [data-home-intro-item]         — each word wrapper in the headline (rises in with stagger)
+//   [data-home-intro-lottie]       — squiggle Lottie container, paired with [data-lottie-src]
 //   [data-home-hero-video]         — wrapper containing the 100svh hero <video> to play on exit
 //
 // Lottie playback frames (overridable on the Lottie element):
 //   [data-lottie-frame]            — initial hold frame (default 0)
 //   [data-lottie-end-frame]        — last frame to play to (default = Lottie's totalFrames)
+//
+// Cadence (matches V1 buffmotion.com feel):
+//   0.20s — "Hey," rises (y:15 → 0, autoAlpha 0 → 1, 0.55s, buff ease)
+//   0.45s — "we're" rises (0.25s stagger)
+//   0.70s — "Buff" rises (0.25s stagger)
+//   0.95s — Squiggle Lottie plays its draw-on
+//   2.30s — Panel slides up off-screen (0.8s)
+//   3.10s — Done, hero video plays
 
 let tl = null;
 let lottieAnim = null;
@@ -58,7 +65,7 @@ export function initHomeIntro(scope) {
   }
   hasPlayed = true;
 
-  const words = root.querySelectorAll("[data-home-intro-word]");
+  const items = root.querySelectorAll("[data-home-intro-item]");
   const lottieEl = root.querySelector("[data-home-intro-lottie]");
   const videoWrap = document.querySelector("[data-home-hero-video]");
   const videoEl = videoWrap ? videoWrap.querySelector("video") : null;
@@ -119,24 +126,24 @@ export function initHomeIntro(scope) {
     return;
   }
 
-  // Phase 1: panel visible, words start hidden
+  // Phase 1: panel visible, items start hidden + nudged down 15px (V1's exact translate value)
   tl.set(root, { autoAlpha: 1, yPercent: 0 });
-  tl.set(words, { yPercent: 100, autoAlpha: 0 });
+  tl.set(items, { y: 15, autoAlpha: 0 });
 
-  // Phase 2: words rise + fade in, staggered (matches V1's 15px+fade pattern, scaled to yPercent for clean line-height handling)
-  tl.to(words, { yPercent: 0, autoAlpha: 1, stagger: 0.08, duration: 0.55 }, 0.1);
+  // Phase 2: words rise + fade in, 0.25s stagger between them — matches V1 rhythm
+  tl.to(items, { y: 0, autoAlpha: 1, stagger: 0.25, duration: 0.55 }, 0.2);
 
-  // Phase 3: Lottie underline draws on once the words have landed
+  // Phase 3: squiggle Lottie draws as "Buff" lands (~0.95s — third word started at 0.70s)
   if (lottieAnim) {
     tl.call(() => {
       const endAttr = lottieEl.getAttribute("data-lottie-end-frame");
       const endFrame = endAttr ? parseInt(endAttr, 10) : lottieAnim.totalFrames;
       lottieAnim.playSegments([startFrame, endFrame], true);
-    }, null, 0.55);
+    }, null, 0.95);
   }
 
-  // Hold roughly 1.5s for the Lottie to draw, then slide the panel up off-screen
-  tl.to(root, { yPercent: -100, duration: 0.7, ease: "buff" }, 2.2);
+  // Phase 4: hold for the squiggle (~1.3s draw), then slide the panel up off-screen
+  tl.to(root, { yPercent: -100, duration: 0.8, ease: "buff" }, 2.3);
 }
 
 export function destroyHomeIntro() {
