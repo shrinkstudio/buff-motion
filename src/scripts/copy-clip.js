@@ -10,23 +10,28 @@
 //   [data-copy-message]         — success message shown on trigger after copy
 //   [data-copy-duration]        — ms to hold success state (default: 1000)
 //   [data-copy-active-class]    — class added during success state (default: "is-copied")
+//
+// Listener: document-level CAPTURE-phase delegation so the handler runs
+// before Barba's own capture-phase link interceptor. Without that, Barba
+// would SPA-navigate to the href before preventDefault could fire.
 
-let listeners = [];
+let docHandler = null;
 
-function handleClick(e) {
-  var trigger = e.currentTarget;
+function copy(trigger, e) {
   if (trigger._copyBusy) return;
 
-  // Link mode — copy the trigger's href as an absolute URL.
-  // Used for CMS-bound anchors where the href is built by Webflow (e.g. /utm/{slug}).
-  if (trigger.getAttribute('data-copy') === 'link') {
+  var isLinkMode = trigger.getAttribute('data-copy') === 'link';
+
+  // In link mode the click must NOT navigate (browser nav OR Barba SPA nav).
+  if (isLinkMode) {
     e.preventDefault();
+    e.stopPropagation();
   }
 
   // Resolve text to copy
   var text = trigger.getAttribute('data-copy-text');
 
-  if (!text && trigger.getAttribute('data-copy') === 'link') {
+  if (!text && isLinkMode) {
     var href = trigger.getAttribute('href') || '';
     if (href) {
       try { text = new URL(href, window.location.origin).href; } catch (err) { text = href; }
@@ -53,7 +58,11 @@ function handleClick(e) {
 
   if (!text) return;
 
-  // Copy to clipboard
+  if (!navigator.clipboard) {
+    window.prompt('Copy this:', text);
+    return;
+  }
+
   navigator.clipboard.writeText(text.trim()).then(function () {
     trigger._copyBusy = true;
 
@@ -64,35 +73,48 @@ function handleClick(e) {
     // Store original text and swap if message provided
     var originalText = null;
     if (message) {
-      originalText = trigger.textContent;
-      trigger.textContent = message;
+      // Prefer a heading/span/p inside the trigger so we don't blast button icons
+      var textEl = trigger.querySelector('h1,h2,h3,h4,h5,h6,span,p') || trigger;
+      originalText = textEl.textContent;
+      textEl.textContent = message;
+      trigger._copyTextEl = textEl;
     }
 
     trigger.classList.add(activeClass);
 
     setTimeout(function () {
       trigger.classList.remove(activeClass);
-      if (originalText !== null) trigger.textContent = originalText;
+      if (originalText !== null && trigger._copyTextEl) {
+        trigger._copyTextEl.textContent = originalText;
+        trigger._copyTextEl = null;
+      }
       trigger._copyBusy = false;
     }, duration);
+  }).catch(function () {
+    window.prompt('Copy this:', text);
   });
 }
 
 export function initCopyClip(scope) {
   scope = scope || document;
-  var triggers = scope.querySelectorAll('[data-copy="trigger"], [data-copy="link"]');
-  if (!triggers.length) return;
+  // Nothing to bind to in this scope — bail
+  if (!scope.querySelector('[data-copy="trigger"], [data-copy="link"]')) return;
+  // Already delegated at document level — no need to re-bind on Barba page change
+  if (docHandler) return;
 
-  triggers.forEach(function (trigger) {
-    trigger.addEventListener('click', handleClick);
-    listeners.push(trigger);
-  });
+  docHandler = function (e) {
+    var trigger = e.target.closest('[data-copy="trigger"], [data-copy="link"]');
+    if (!trigger) return;
+    copy(trigger, e);
+  };
+
+  // Capture phase — runs before Barba's capture-phase link interceptor
+  document.addEventListener('click', docHandler, true);
 }
 
 export function destroyCopyClip() {
-  listeners.forEach(function (trigger) {
-    trigger.removeEventListener('click', handleClick);
-    trigger._copyBusy = false;
-  });
-  listeners = [];
+  if (docHandler) {
+    document.removeEventListener('click', docHandler, true);
+    docHandler = null;
+  }
 }
