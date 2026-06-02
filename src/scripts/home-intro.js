@@ -43,16 +43,22 @@ let hasPlayed = false;
   document.head.appendChild(style);
 })();
 
-// Instantly dismiss the panel + start the video, no animation.
-// Used when the user SPA-navigates BACK to Home after the intro already played once.
+// SPA navigation back to Home — skip both the intro AND the hero video section.
+// The hero video is a first-impression-only piece; returning visitors land directly
+// on the main content below it ("We're a motion-first…").
 function dismissInstantly(root) {
-  root.style.display = "none";
+  root.remove();
   document.body.setAttribute("data-home-intro-status", "done");
+
+  // Hide the hero video section so the page starts at the next section
   const videoWrap = document.querySelector("[data-home-hero-video]");
-  const videoEl = videoWrap ? videoWrap.querySelector("video") : null;
-  if (videoEl) {
-    const p = videoEl.play();
-    if (p && typeof p.catch === "function") p.catch(() => {});
+  if (videoWrap) {
+    const videoEl = videoWrap.querySelector("video");
+    if (videoEl) {
+      videoEl.pause();
+      try { videoEl.currentTime = 0; } catch (_) {}
+    }
+    videoWrap.style.display = "none";
   }
 }
 
