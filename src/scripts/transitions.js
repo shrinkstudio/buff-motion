@@ -78,10 +78,30 @@ function initTransitionLottie() {
   });
 }
 
-function playTransitionLottie() {
+// Frame range — read live each transition; falls back to the known 64-frame crop
+// (Trans_Squiggle_In-Out-40.json: 64 frames @ 50fps = 1.28s) if Lottie hasn't
+// finished loading yet on the very first navigation.
+function getLottieFrameRange() {
+  const total = (transitionLottie && transitionLottie.totalFrames) || 64;
+  return { start: 0, half: Math.floor(total / 2), end: total };
+}
+
+// Scrub the Lottie playhead from `from` → `to` over `duration`, synced to a GSAP
+// timeline. Replaces the old "play full Lottie at 0.4s" call so the squiggle
+// tracks the panel sweep — in-frames during leave, out-frames during enter,
+// one fluid motion from click to ready.
+function scrubTransitionLottie(tl, from, to, duration, position) {
   if (!transitionLottie) return;
-  transitionLottie.goToAndStop(0, true);
-  transitionLottie.play();
+  const proxy = { f: from };
+  tl.set(proxy, { f: from }, position);
+  tl.to(proxy, {
+    f: to,
+    duration: duration,
+    ease: "none",
+    onUpdate: () => {
+      if (transitionLottie) transitionLottie.goToAndStop(proxy.f, true);
+    },
+  }, position);
 }
 
 function resetTransitionLottie() {
@@ -249,10 +269,11 @@ function runPageLeaveAnimation(current, next) {
     duration: 1,
   }, "<");
 
-  // Play the Lottie as panel covers the screen
-  tl.call(() => {
-    playTransitionLottie();
-  }, null, 0.4);
+  // Lottie scrubs from frame 0 → halfway as the panel sweeps up.
+  // Reaches the middle frame exactly when the panel fully covers the viewport,
+  // then holds during the 0.35s dwell before the enter half kicks in.
+  const leaveRange = getLottieFrameRange();
+  scrubTransitionLottie(tl, leaveRange.start, leaveRange.half, 1, 0);
 
   // Current page slides up as it gets covered
   tl.fromTo(current, {
@@ -315,6 +336,12 @@ function runPageEnterAnimation(next) {
     overwrite: "auto",
     immediateRender: false
   }, "startEnter");
+
+  // Lottie scrubs from halfway → end as the panel sweeps off. One fluid motion
+  // with the leave half: in-frames during cover, hold during dwell, out-frames
+  // during reveal.
+  const enterRange = getLottieFrameRange();
+  scrubTransitionLottie(tl, enterRange.half, enterRange.end, 1, "startEnter");
 
   // Bottom curve scales out — rounded trailing edge
   tl.fromTo(transitionPanelBottom, {
