@@ -269,11 +269,13 @@ function runPageLeaveAnimation(current, next) {
     duration: 1,
   }, "<");
 
-  // Lottie scrubs from frame 0 → halfway as the panel sweeps up.
-  // Reaches the middle frame exactly when the panel fully covers the viewport,
-  // then holds during the 0.35s dwell before the enter half kicks in.
+  // Lottie scrubs from frame 0 → halfway over 0.4 → 1.0s — delayed start so the
+  // in-portion plays while the panel is already mid-cover and the squiggle is
+  // dead-centre on screen (rather than racing through while the eye still
+  // tracks the rising panel). Reaches midpoint exactly as the panel fully
+  // covers, then holds during the 0.35s dwell before the out half kicks in.
   const leaveRange = getLottieFrameRange();
-  scrubTransitionLottie(tl, leaveRange.start, leaveRange.half, 1, 0);
+  scrubTransitionLottie(tl, leaveRange.start, leaveRange.half, 0.6, 0.4);
 
   // Current page slides up as it gets covered
   tl.fromTo(current, {
@@ -337,11 +339,12 @@ function runPageEnterAnimation(next) {
     immediateRender: false
   }, "startEnter");
 
-  // Lottie scrubs from halfway → end as the panel sweeps off. One fluid motion
-  // with the leave half: in-frames during cover, hold during dwell, out-frames
-  // during reveal.
+  // Lottie scrubs from halfway → end over 0.6s starting at startEnter — symmetric
+  // with the leave half (both halves at near-native pace). The panel keeps
+  // sweeping off for another 0.4s after the squiggle finishes, by which point
+  // the Lottie's tail frames are empty space and only the panel exit remains.
   const enterRange = getLottieFrameRange();
-  scrubTransitionLottie(tl, enterRange.half, enterRange.end, 1, "startEnter");
+  scrubTransitionLottie(tl, enterRange.half, enterRange.end, 0.6, "startEnter");
 
   // Bottom curve scales out — rounded trailing edge
   tl.fromTo(transitionPanelBottom, {
