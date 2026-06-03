@@ -203,10 +203,22 @@ export function destroySidenav() {
   toggleHandlers = [];
   if (keyHandler) document.removeEventListener("keydown", keyHandler);
   keyHandler = null;
+
+  // Kill any in-flight open/close timeline so a half-played playhead doesn't
+  // get stranded across the Barba container swap.
   if (tl) {
     tl.kill();
     tl = null;
   }
+
+  // If the menu was open mid-transition (user clicked a sidenav link), the
+  // body still carries data-menu-status="open" and Lenis was paused by openNav.
+  // The next page would inherit a stuck state. Reset both before tearing down.
+  if (document.body.getAttribute("data-menu-status") === "open") {
+    document.body.setAttribute("data-menu-status", "");
+    if (window.__buffMotionLenis) window.__buffMotionLenis.start();
+  }
+
   if (arrowLottie) {
     arrowLottie.destroy();
     arrowLottie = null;

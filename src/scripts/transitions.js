@@ -124,7 +124,6 @@ function initOnceFunctions() {
   initModalDelegation();
   initFontSizeDetect();
   initSkipLink();
-  initSidenav();
 
   // Home page preloader animation — only fires on first page load and only when the panel exists
   if (document.querySelector('[data-home-intro]')) initHomeIntro();
@@ -149,6 +148,7 @@ function initBeforeEnterFunctions(next) {
   destroyVideoHover();
   destroySocialShare();
   destroyFilter();
+  destroySidenav();
 }
 
 function initAfterEnterFunctions(next) {
@@ -171,6 +171,7 @@ function initAfterEnterFunctions(next) {
   if (has('[data-social-share]'))                  initSocialShare(nextPage);
   if (has('[data-filter-group]'))                  initFilter(nextPage);
   if (has('[data-home-intro]'))                    initHomeIntro(nextPage);
+  if (has('[data-sidenav-wrap]'))                  initSidenav(nextPage);
 
   // Re-evaluate inline scripts inside the new container (Webflow embeds)
   reinitScripts(nextPage);
