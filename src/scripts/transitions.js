@@ -262,6 +262,11 @@ function runPageLeaveAnimation(current, next) {
     duration: 1,
   }, 0);
 
+  // Speed up on mobile (~1.6x faster), matching Forest's mobile pace
+  if (window.matchMedia('(max-width: 767px)').matches) {
+    tl.timeScale(1.6);
+  }
+
   return tl;
 }
 
@@ -282,8 +287,9 @@ function runPageEnterAnimation(next) {
     return new Promise(resolve => tl.call(resolve, null, "pageReady"));
   }
 
-  // Lottie plays during the leave — no gap before reveal
-  tl.add("startEnter", 0.1);
+  // Wait for the leave's 1s panel-cover to fully complete + 0.35s "dwell"
+  // before starting the reveal. Matches Forest's smooth pattern.
+  tl.add("startEnter", 1.35);
 
   // Show new page
   tl.set(next, {
@@ -295,7 +301,7 @@ function runPageEnterAnimation(next) {
     yPercent: -100,
   }, {
     yPercent: -200,
-    duration: 1.2,
+    duration: 1,
     overwrite: "auto",
     immediateRender: false
   }, "startEnter");
@@ -305,7 +311,7 @@ function runPageEnterAnimation(next) {
     yPercent: 100,
   }, {
     yPercent: 200,
-    duration: 1.2,
+    duration: 1,
     overwrite: "auto",
     immediateRender: false
   }, "startEnter");
@@ -315,7 +321,7 @@ function runPageEnterAnimation(next) {
     scaleY: 1
   }, {
     scaleY: 0,
-    duration: 1.2,
+    duration: 1,
   }, "<");
 
   // Hide panel + lottie after it exits
@@ -330,7 +336,7 @@ function runPageEnterAnimation(next) {
   // New page slides up from below
   tl.from(next, {
     y: "15dvh",
-    duration: 1.2,
+    duration: 1,
   }, "startEnter");
 
   tl.add("pageReady");
@@ -338,6 +344,11 @@ function runPageEnterAnimation(next) {
     resetTransitionLottie();
   }, null, "pageReady");
   tl.call(resetPage, [next], "pageReady");
+
+  // Speed up on mobile (~1.6x faster), matching Forest's mobile pace
+  if (window.matchMedia('(max-width: 767px)').matches) {
+    tl.timeScale(1.6);
+  }
 
   return new Promise(resolve => {
     tl.call(resolve, null, "pageReady");
