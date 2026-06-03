@@ -10,7 +10,6 @@ import { initInlineVideos, destroyInlineVideos } from './inline-video.js';
 import { initModalDelegation, initModals, destroyModals } from './modal.js';
 import { initFontSizeDetect, initFooterYear, initSkipLink } from './utilities.js';
 import { initLottieAnimations, destroyLottieAnimations } from './lottie.js';
-import { initSplitTextReveal, destroySplitTextReveal } from './split-text.js';
 import { initCopyClip, destroyCopyClip } from './copy-clip.js';
 import { initTOC, destroyTOC } from './toc.js';
 import { initContentReveal, destroyContentReveal } from './content-reveal.js';
@@ -25,7 +24,6 @@ import { initHomeIntro, destroyHomeIntro } from './home-intro.js';
 
 gsap.registerPlugin(CustomEase);
 if (typeof ScrollTrigger !== 'undefined') gsap.registerPlugin(ScrollTrigger);
-if (typeof SplitText !== 'undefined') gsap.registerPlugin(SplitText);
 
 history.scrollRestoration = "manual";
 
@@ -36,10 +34,6 @@ let onceFunctionsInitialized = false;
 // Transition Lottie — loaded once, replayed each transition
 let transitionLottie = null;
 
-// TEMP: disable animations during styling/client review.
-// Flip both back to true to restore the wipe + text-reveal.
-const ENABLE_PAGE_TRANSITIONS = false;
-const ENABLE_TEXT_REVEAL = false;
 
 const hasLenis = typeof window.Lenis !== "undefined";
 const hasScrollTrigger = typeof window.ScrollTrigger !== "undefined";
@@ -126,7 +120,6 @@ function initBeforeEnterFunctions(next) {
   destroyInlineVideos();
   destroyModals();
   destroyLottieAnimations();
-  destroySplitTextReveal();
   destroyCopyClip();
   destroyTOC();
   destroyContentReveal();
@@ -148,18 +141,9 @@ function initAfterEnterFunctions(next) {
   if (has('dialog'))                                initModals(nextPage);
   if (has('[data-footer-year]'))                    initFooterYear(nextPage);
   if (has('[data-lottie]'))                         initLottieAnimations(nextPage);
-  if (has('[data-split]')) {
-    if (ENABLE_TEXT_REVEAL) {
-      initSplitTextReveal(nextPage);
-    } else {
-      // TEMP — reveal animation disabled. Force split headings visible so FOUC CSS doesn't keep them hidden.
-      nextPage.querySelectorAll('[data-split="heading"]').forEach(el => gsap.set(el, { autoAlpha: 1 }));
-    }
-  }
   if (has('[data-copy]'))                           initCopyClip(nextPage);
   if (has('[data-toc-source]'))                     initTOC(nextPage);
-  // TEMP — disabled during styling/client review. Uncomment to restore reveal-on-scroll.
-  // if (has('[data-reveal-group]'))                   initContentReveal(nextPage);
+  if (has('[data-reveal-group]'))                   initContentReveal(nextPage);
   if (has('[data-typeform]'))                       initTypeform(nextPage);
   if (document.querySelector('.cursor'))             initCursorMarquee();
   if (has('[data-logo-wall-cycle-init]'))           initLogoWall(nextPage);
@@ -203,12 +187,6 @@ function runPageOnceAnimation(next) {
 
 function runPageLeaveAnimation(current, next) {
   console.log("[buff] leave — page exit animation");
-
-  if (!ENABLE_PAGE_TRANSITIONS) {
-    // Instant swap — no wipe. Restore by flipping ENABLE_PAGE_TRANSITIONS.
-    return gsap.timeline({ onComplete: () => current.remove() })
-      .set(next, { autoAlpha: 1, clearProps: "position,top,left,right" });
-  }
 
   const transitionWrap = document.querySelector("[data-transition-wrap]");
   const transitionPanel = transitionWrap.querySelector("[data-transition-panel]");
@@ -289,15 +267,6 @@ function runPageLeaveAnimation(current, next) {
 
 function runPageEnterAnimation(next) {
   console.log("[buff] enter — page enter animation");
-
-  if (!ENABLE_PAGE_TRANSITIONS) {
-    // Instant reveal of next container. Pair with disabled leave above.
-    const tl = gsap.timeline();
-    tl.set(next, { autoAlpha: 1, clearProps: "position,top,left,right" });
-    tl.add("pageReady");
-    tl.call(resetPage, [next], "pageReady");
-    return new Promise(resolve => tl.call(resolve, null, "pageReady"));
-  }
 
   const transitionWrap = document.querySelector("[data-transition-wrap]");
   const transitionPanel = transitionWrap.querySelector("[data-transition-panel]");
