@@ -43,7 +43,7 @@ export function initTOC(scope) {
     || source.closest('[data-toc-hide-hash]')?.dataset.tocHideHash === 'true';
   const activeClass = list.dataset.tocActive || 'is-active';
   const offsetAttr = document.querySelector('[data-toc-offset]')?.dataset.tocOffset;
-  const offset = offsetAttr ? parseInt(offsetAttr, 10) : null;
+  const offset = resolveCssLength(offsetAttr);
 
   // Resolve entries: explicit [data-toc-mark] elements override the heading scan.
   // Lets templates list marked elements (e.g. eyebrows) instead of auto-scanning
@@ -247,4 +247,28 @@ function dedupeId(id, index) {
 function getCSSNavHeight() {
   const val = getComputedStyle(document.documentElement).getPropertyValue('--nav-height');
   return val ? parseInt(val, 10) : 0;
+}
+
+// Resolve any CSS length value (px / em / rem / vh / % …) to px via a transient
+// probe element. Plain digit-only values are treated as px directly. Returns
+// null if the value can't be resolved.
+//
+// Lets data-toc-offset be written naturally — e.g. "7em" — without authors
+// having to pre-convert to pixels and lose the relationship to root font-size.
+function resolveCssLength(value) {
+  if (value == null) return null;
+  const str = String(value).trim();
+  if (!str) return null;
+  if (/^-?\d+(\.\d+)?$/.test(str)) return parseFloat(str);
+  if (typeof document === 'undefined') return null;
+  const probe = document.createElement('div');
+  probe.style.position = 'absolute';
+  probe.style.visibility = 'hidden';
+  probe.style.pointerEvents = 'none';
+  probe.style.left = '-9999px';
+  probe.style.height = str;
+  document.body.appendChild(probe);
+  const px = probe.getBoundingClientRect().height;
+  document.body.removeChild(probe);
+  return Number.isFinite(px) && px > 0 ? px : null;
 }
