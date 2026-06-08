@@ -60,7 +60,11 @@ export function initHeroParallax(scope) {
     // sticky-pinned — its bottom never actually crosses the viewport top.
     // Scrub progresses over `distance` svh of native scroll past the start.
     end: `+=${distance}svh`,
-    scrub: true,
+    // scrub: 0.5 adds a half-second catch-up so the animation lags slightly
+    // behind raw scroll input. Reads as "fluid" rather than the rigid 1:1
+    // mapping of scrub: true. End state is identical, just the in-between
+    // beats are smoothed.
+    scrub: 0.5,
     animation: gsap.timeline()
       .to(targetEl, {
         scale: endScale,

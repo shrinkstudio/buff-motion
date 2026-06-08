@@ -49,9 +49,24 @@ function getDocumentTop(el) {
   return top;
 }
 
+// Measure the actual nav element so we can extend the bg-release point by its
+// height. By the time scrollY crosses (triggerBottom + navHeight), the section
+// below has already crossed UNDER the nav — so when the bg snaps off, there's
+// already a solid background behind the nav and the flip is invisible.
+// .sidenav matches Buff's nav selector; fallback walks common alternatives.
+function getNavHeight() {
+  const nav = document.querySelector('.sidenav')
+    || document.querySelector('.nav')
+    || document.querySelector('[data-nav]');
+  if (nav) return nav.offsetHeight;
+  // CSS variable fallback if no nav element is queryable
+  const val = getComputedStyle(document.documentElement).getPropertyValue('--nav-height');
+  return val ? parseInt(val, 10) : 0;
+}
+
 function recomputeNaturalBottom() {
   if (!triggerEl) return;
-  cachedNaturalBottom = getDocumentTop(triggerEl) + triggerEl.offsetHeight;
+  cachedNaturalBottom = getDocumentTop(triggerEl) + triggerEl.offsetHeight + getNavHeight();
 }
 
 export function initNavOverHero(scope) {
