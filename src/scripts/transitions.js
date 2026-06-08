@@ -21,6 +21,7 @@ import { initSidenav, destroySidenav } from './sidenav.js';
 import { initSocialShare, destroySocialShare } from './social-share.js';
 import { initFilter, destroyFilter } from './filter.js';
 import { initHomeIntro, destroyHomeIntro } from './home-intro.js';
+import { initParallaxSlider, destroyParallaxSlider } from './parallax-slider.js';
 
 gsap.registerPlugin(CustomEase);
 if (typeof ScrollTrigger !== 'undefined') gsap.registerPlugin(ScrollTrigger);
@@ -185,6 +186,7 @@ function initBeforeEnterFunctions(next) {
   destroyCursorMarquee();
   destroyLogoWall();
   destroyVideoHover();
+  destroyParallaxSlider();
   destroySocialShare();
   destroyFilter();
   destroySidenav();
@@ -207,6 +209,7 @@ function initAfterEnterFunctions(next) {
   if (document.querySelector('.cursor'))             initCursorMarquee();
   if (has('[data-logo-wall-cycle-init]'))           initLogoWall(nextPage);
   if (has('[data-video-on-hover]'))                initVideoHover(nextPage);
+  if (has('[data-parallax-init]'))                 initParallaxSlider(nextPage);
   if (has('[data-social-share]'))                  initSocialShare(nextPage);
   if (has('[data-filter-group]'))                  initFilter(nextPage);
   if (has('[data-home-intro]'))                    initHomeIntro(nextPage);
