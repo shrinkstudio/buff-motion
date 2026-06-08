@@ -78,12 +78,31 @@ function initTransitionLottie() {
   });
 }
 
-// Frame range — read live each transition; falls back to the known 64-frame crop
-// (Trans_Squiggle_In-Out-40.json: 64 frames @ 50fps = 1.28s) if Lottie hasn't
-// finished loading yet on the very first navigation.
+// Frame range — uses ABSOLUTE file frames within the Lottie's active range.
+//
+// Why this matters: the squiggle file (Trans_Squiggle_In-Out-40.json) has
+// ip=43, op=107 — its drawable content lives in absolute frames 43-107, not
+// 0-64. lottie-web's goToAndStop(value, true) does setCurrentRawFrameValue
+// (value - firstFrame) — so goToAndStop(0, true) on a file with ip=43 maps
+// to raw frame -43, which clamps and just renders frame 43 the whole time.
+// Scrubbing 0 → 64 would clamp 0 → 32 and then run frame 43 → 64 — i.e.
+// only the first ~33% of the active range. Reads as "the squiggle starts
+// about half way through" (which is exactly what the client flagged).
+//
+// Fix: scrub in absolute frames within ip → op so the FULL squiggle plays.
+// Defaults to the known good range for the brand-supplied -40 crop if the
+// Lottie hasn't populated firstFrame/totalFrames yet on the very first
+// navigation.
 function getLottieFrameRange() {
-  const total = (transitionLottie && transitionLottie.totalFrames) || 64;
-  return { start: 0, half: Math.floor(total / 2), end: total };
+  const DEFAULT = { start: 43, half: 75, end: 107 };
+  if (!transitionLottie) return DEFAULT;
+  const ip = typeof transitionLottie.firstFrame === 'number' ? transitionLottie.firstFrame : 43;
+  const total = transitionLottie.totalFrames || 64;
+  return {
+    start: ip,
+    half: ip + Math.floor(total / 2),
+    end: ip + total,
+  };
 }
 
 // Scrub the Lottie playhead from `from` → `to` over `duration`, synced to a GSAP
@@ -106,7 +125,10 @@ function scrubTransitionLottie(tl, from, to, duration, position) {
 
 function resetTransitionLottie() {
   if (!transitionLottie) return;
-  transitionLottie.goToAndStop(0, true);
+  // Reset to the absolute first ACTIVE frame, not file frame 0 — see
+  // getLottieFrameRange comment for why.
+  const range = getLottieFrameRange();
+  transitionLottie.goToAndStop(range.start, true);
 }
 
 
