@@ -31,6 +31,28 @@
 let tickerFn = null;
 let triggerEl = null;
 let lastState = null;
+let cachedNaturalBottom = 0;
+let resizeObserver = null;
+let resizeFn = null;
+
+// Walk the offsetParent chain to compute an element's document-absolute top.
+// offsetTop is relative to offsetParent, so we sum across the chain to get
+// the actual page-y position — works for sticky elements too, because
+// offsetTop reflects NATURAL layout position, not the sticky-pinned position.
+function getDocumentTop(el) {
+  let top = 0;
+  let current = el;
+  while (current && current !== document.body && current !== document.documentElement) {
+    top += current.offsetTop || 0;
+    current = current.offsetParent;
+  }
+  return top;
+}
+
+function recomputeNaturalBottom() {
+  if (!triggerEl) return;
+  cachedNaturalBottom = getDocumentTop(triggerEl) + triggerEl.offsetHeight;
+}
 
 export function initNavOverHero(scope) {
   scope = scope || document;
@@ -40,20 +62,27 @@ export function initNavOverHero(scope) {
     || document.querySelector("[data-nav-over-hero-trigger]");
   if (!triggerEl) return;
 
+  recomputeNaturalBottom();
+
+  // Recompute on resize — viewport changes affect the 100svh-sized trigger,
+  // and any layout shift above the trigger affects its offsetTop. Cheap.
+  resizeFn = () => recomputeNaturalBottom();
+  window.addEventListener("resize", resizeFn, { passive: true });
+  if (typeof ResizeObserver !== "undefined") {
+    resizeObserver = new ResizeObserver(recomputeNaturalBottom);
+    resizeObserver.observe(triggerEl);
+  }
+
   // Use gsap.ticker rather than scroll events so we share the same RAF cycle
-  // as Lenis + the rest of the bundle's tweens. One frame, one read.
+  // as Lenis + the rest of the bundle's tweens.
+  //
+  // Comparison is scrollY vs the trigger's NATURAL document-bottom (NOT its
+  // getBoundingClientRect, which returns the sticky-pinned position and would
+  // tell us "still in view" all the way down the page). Once the user has
+  // scrolled past the trigger's natural footprint, the hero text (or
+  // whatever's below) is now under the nav and the nav bg is no longer needed.
   tickerFn = () => {
-    // The trigger element's "in-view" zone is its position from the top of
-    // the document down to its bottom edge. While scrollY is within that
-    // range, the user is still over the hero — nav needs a bg.
-    //
-    // Using getBoundingClientRect().bottom against the viewport top (0) is
-    // the most robust read: it works whether the trigger is statically
-    // positioned, sticky-pinned, or transformed. The trigger is "still
-    // visible from the top" as long as its bottom edge is below the
-    // viewport top.
-    const bottom = triggerEl.getBoundingClientRect().bottom;
-    const overHero = bottom > 0;
+    const overHero = window.scrollY < cachedNaturalBottom;
     if (overHero === lastState) return; // only flip when state actually changes
     lastState = overHero;
     document.body.setAttribute("data-nav-over-hero", overHero ? "true" : "false");
@@ -69,7 +98,16 @@ export function destroyNavOverHero() {
     gsap.ticker.remove(tickerFn);
     tickerFn = null;
   }
+  if (resizeFn) {
+    window.removeEventListener("resize", resizeFn);
+    resizeFn = null;
+  }
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+    resizeObserver = null;
+  }
   triggerEl = null;
   lastState = null;
+  cachedNaturalBottom = 0;
   document.body.removeAttribute("data-nav-over-hero");
 }

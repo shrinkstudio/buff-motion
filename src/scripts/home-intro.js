@@ -185,14 +185,15 @@ export function initHomeIntro(scope) {
   // intro reveal and a subsequent page transition feel like the same motion.
   tl.to(root, { yPercent: -100, duration: 1.0, ease: "buff" }, 2.3);
 
-  // Phase 5: page content rises from y:15dvh → 0 IN SYNC with the panel exit.
-  // Mirrors runPageEnterAnimation's `tl.from(next, { y: "15dvh", duration: 1 })`
-  // exactly — same target shape, same duration, same ease, same start time as
-  // the panel sweep. First impression now reads as a page transition: the panel
-  // exits + the content rises into place as one motion. Continuous motion
-  // language between first-load and every subsequent navigation.
+  // Phase 5: page content rises from y:7dvh → 0 IN SYNC with the panel exit.
+  // Halved from the original 15dvh — at 15dvh the rise was momentarily revealing
+  // the nav bar AND peeking the top of the hero-text section through the bottom
+  // of the viewport (sticky cc-home-hero + translated parent interaction). 7dvh
+  // is enough to read as a "rise into place" without exposing layout edges.
+  // Same duration + ease as the page transition's enter so the motion language
+  // still matches — just a shorter travel.
   tl.fromTo(pageContent,
-    { y: "15dvh" },
+    { y: "7dvh" },
     { y: 0, duration: 1.0, ease: "buff" },
     2.3
   );
