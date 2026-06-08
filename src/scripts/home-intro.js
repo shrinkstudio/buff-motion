@@ -92,6 +92,10 @@ export function initHomeIntro(scope) {
   const lottieEl = root.querySelector("[data-home-intro-lottie]");
   const videoWrap = document.querySelector("[data-home-hero-video]");
   const videoEl = videoWrap ? videoWrap.querySelector("video") : null;
+  // Target the Barba container for the site-load rise — same element that
+  // page transitions tween (runPageEnterAnimation → tl.from(next, {y:"15dvh"})).
+  // Falls back to body so the rise still happens if Barba's markup is missing.
+  const pageContent = document.querySelector('[data-barba="container"]') || document.body;
 
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -136,6 +140,10 @@ export function initHomeIntro(scope) {
         lottieAnim = null;
       }
       root.remove();
+      // Clear the inline transform left by Phase 5's rise so the page content
+      // is in a clean baseline state — matches resetPage() in transitions.js,
+      // which clears the same props after a page-enter rise completes.
+      gsap.set(pageContent, { clearProps: "y,transform,translate" });
       unlockScroll();
       if (window.__buffMotionLenis) window.__buffMotionLenis.start();
       document.body.setAttribute("data-home-intro-status", "done");
@@ -176,6 +184,18 @@ export function initHomeIntro(scope) {
   // (transitions.js → runPageLeaveAnimation) — same curve, same length, so the
   // intro reveal and a subsequent page transition feel like the same motion.
   tl.to(root, { yPercent: -100, duration: 1.0, ease: "buff" }, 2.3);
+
+  // Phase 5: page content rises from y:15dvh → 0 IN SYNC with the panel exit.
+  // Mirrors runPageEnterAnimation's `tl.from(next, { y: "15dvh", duration: 1 })`
+  // exactly — same target shape, same duration, same ease, same start time as
+  // the panel sweep. First impression now reads as a page transition: the panel
+  // exits + the content rises into place as one motion. Continuous motion
+  // language between first-load and every subsequent navigation.
+  tl.fromTo(pageContent,
+    { y: "15dvh" },
+    { y: 0, duration: 1.0, ease: "buff" },
+    2.3
+  );
 }
 
 export function destroyHomeIntro() {
