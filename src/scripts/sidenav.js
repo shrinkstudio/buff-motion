@@ -115,19 +115,33 @@ export function initSidenav(scope) {
   const arrowLottieEl = document.querySelector("[data-nav-lottie-arrow]");
 
   // Load arrow Lottie + hold at the configured "closed" frame.
+  //
+  // Defaults are tuned for buff_menu_arrow_black.json (0–90 frames @ 30fps):
+  //   30 — arrow straight + centred (rotation 0°, position (0,0))
+  //   60 — X / close icon, held during the file's rotation-peak hold (rot −45°)
+  //   85 — back to straight arrow (rotation 0° again)
+  //
+  // 30 and 85 are visually identical rest frames (both rot=0°, pos=(0,0)) —
+  // so when the close anim plays 60 → 85 and then goToAndStop(30) fires on
+  // complete, the snap is invisible. The file was designed for this pattern.
+  //
+  // Previous defaults (35/70/100) landed mid-rotation on the resting state
+  // (arrow tilted right + offset right) and 100 was out of range — silently
+  // clamped to 90.
+  //
   // Override per-element on the Lottie element via:
-  //   [data-lottie-frame="N"]            — closed/resting frame (default 35)
-  //   [data-lottie-open-frame="N"]       — open/active frame (default 70)
-  //   [data-lottie-close-end-frame="N"]  — frame to play to on close before resetting (default 100)
+  //   [data-lottie-frame="N"]            — closed/resting frame (default 30)
+  //   [data-lottie-open-frame="N"]       — open/active frame (default 60)
+  //   [data-lottie-close-end-frame="N"]  — frame to play to on close before resetting (default 85)
   const closedFrame = arrowLottieEl
-    ? parseInt(arrowLottieEl.getAttribute("data-lottie-frame") || "35", 10)
-    : 35;
+    ? parseInt(arrowLottieEl.getAttribute("data-lottie-frame") || "30", 10)
+    : 30;
   const openFrame = arrowLottieEl
-    ? parseInt(arrowLottieEl.getAttribute("data-lottie-open-frame") || "70", 10)
-    : 70;
+    ? parseInt(arrowLottieEl.getAttribute("data-lottie-open-frame") || "60", 10)
+    : 60;
   const closeEndFrame = arrowLottieEl
-    ? parseInt(arrowLottieEl.getAttribute("data-lottie-close-end-frame") || "100", 10)
-    : 100;
+    ? parseInt(arrowLottieEl.getAttribute("data-lottie-close-end-frame") || "85", 10)
+    : 85;
   arrowLottie = loadNavLottie(arrowLottieEl);
   if (arrowLottie) {
     arrowLottie.addEventListener("DOMLoaded", () => arrowLottie.goToAndStop(closedFrame, true));
