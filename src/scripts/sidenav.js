@@ -72,6 +72,23 @@ function resetSidenavState() {
   if (window.__buffMotionLenis && typeof window.__buffMotionLenis.start === "function") {
     window.__buffMotionLenis.start();
   }
+
+  // Recover any stuck Lottie playheads from a prior toggle that was killed
+  // mid-animation (Barba transition, rapid double-click, etc). Without this
+  // the arrow can land "pointing up-right" — its frame-60 X pose — and stay
+  // there because the close's playSegments never reached its target. Reading
+  // the closed frame off the live attribute keeps this in sync with any
+  // override the user has set in Webflow.
+  if (arrowLottie && typeof arrowLottie.goToAndStop === "function") {
+    const arrowEl = document.querySelector("[data-nav-lottie-arrow]");
+    const closed = arrowEl
+      ? parseInt(arrowEl.getAttribute("data-lottie-frame") || "30", 10)
+      : 30;
+    arrowLottie.goToAndStop(closed, true);
+  }
+  if (bgLottie && typeof bgLottie.goToAndStop === "function") {
+    bgLottie.goToAndStop(0, true);
+  }
 }
 
 function loadNavLottie(container) {
@@ -119,29 +136,21 @@ export function initSidenav(scope) {
   // Defaults are tuned for buff_menu_arrow_black.json (0–90 frames @ 30fps):
   //   30 — arrow straight + centred (rotation 0°, position (0,0))
   //   60 — X / close icon, held during the file's rotation-peak hold (rot −45°)
-  //   85 — back to straight arrow (rotation 0° again)
   //
-  // 30 and 85 are visually identical rest frames (both rot=0°, pos=(0,0)) —
-  // so when the close anim plays 60 → 85 and then goToAndStop(30) fires on
-  // complete, the snap is invisible. The file was designed for this pattern.
-  //
-  // Previous defaults (35/70/100) landed mid-rotation on the resting state
-  // (arrow tilted right + offset right) and 100 was out of range — silently
-  // clamped to 90.
+  // Close plays the segment in REVERSE (60 → 30) — the X unwinds back to the
+  // straight arrow rather than continuing forward through the file's natural
+  // curve and snapping back. lottie-web's playSegments treats end<start as a
+  // reverse-direction segment, so this is just a parameter swap, not a setDirection.
   //
   // Override per-element on the Lottie element via:
   //   [data-lottie-frame="N"]            — closed/resting frame (default 30)
   //   [data-lottie-open-frame="N"]       — open/active frame (default 60)
-  //   [data-lottie-close-end-frame="N"]  — frame to play to on close before resetting (default 85)
   const closedFrame = arrowLottieEl
     ? parseInt(arrowLottieEl.getAttribute("data-lottie-frame") || "30", 10)
     : 30;
   const openFrame = arrowLottieEl
     ? parseInt(arrowLottieEl.getAttribute("data-lottie-open-frame") || "60", 10)
     : 60;
-  const closeEndFrame = arrowLottieEl
-    ? parseInt(arrowLottieEl.getAttribute("data-lottie-close-end-frame") || "85", 10)
-    : 85;
   arrowLottie = loadNavLottie(arrowLottieEl);
   if (arrowLottie) {
     arrowLottie.addEventListener("DOMLoaded", () => arrowLottie.goToAndStop(closedFrame, true));
@@ -230,18 +239,33 @@ export function initSidenav(scope) {
       .to(menuButtonTexts, { yPercent: 0, duration: 0.45 }, 0.05)
       // Hide wrap once it's all cleared, then reset panels off-screen ready for the next open's wipe-in
       .set(navWrap, { display: "none" })
-      .set(bgPanels, { xPercent: 101 });
+      .set(bgPanels, { xPercent: 101 })
+      // Reset the bg squiggle to frame 0 + wipe any inline transforms on the
+      // menu inner content. Two perf-and-correctness wins in one call:
+      //   1. The bg Lottie was burning SVG render cycles inside the hidden
+      //      menu container until the next open re-triggered goToAndPlay(0).
+      //      Resetting here stops that idle render churn and guarantees a
+      //      clean playhead for the next open.
+      //   2. GSAP's kill() on the timeline (when the user toggles mid-anim)
+      //      halts tweens but does NOT clear inline transforms — so the next
+      //      open's fromTo() would land on a non-baseline start state,
+      //      causing the "glitchy" snap into the open animation. clearProps
+      //      wipes the slate.
+      .call(() => {
+        if (bgLottie) bgLottie.goToAndStop(0, true);
+      })
+      .set([menuLinks, fadeTargets], { clearProps: "all" });
 
-    // Lottie arrow plays from current frame forward to the close-end frame,
-    // then silently resets to the closed frame (visually identical pose) ready for next open.
+    // Arrow Lottie: play current frame → closedFrame in REVERSE. lottie-web's
+    // playSegments treats end<start as a reverse-direction segment, so the X
+    // literally unwinds back to the straight arrow — no further-forward
+    // excursion, no goToAndStop snap, no stranded onComplete event handler.
+    // Previous version was 60 → 85 → snap-to-30 which read as "the X spins
+    // forward, hits an end, then snaps back" — exactly the "comes back after
+    // going forward" beat the client flagged.
     if (arrowLottie) {
       tl.call(() => {
-        const onComplete = () => {
-          arrowLottie.removeEventListener("complete", onComplete);
-          arrowLottie.goToAndStop(closedFrame, true);
-        };
-        arrowLottie.addEventListener("complete", onComplete);
-        arrowLottie.playSegments([arrowLottie.currentFrame, closeEndFrame], true);
+        arrowLottie.playSegments([arrowLottie.currentFrame, closedFrame], true);
       }, null, 0);
     } else if (menuButtonIcon) {
       tl.to(menuButtonIcon, { rotate: 0 }, 0);
