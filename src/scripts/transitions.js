@@ -105,45 +105,45 @@ function initTransitionLottie() {
   });
 }
 
-// Sync the Lottie playhead to a GSAP timeline by scrubbing from `from` → `to`
-// over `duration` at `position`. Matches V1 buffmotion.com's pattern: the
-// transition Lottie there is driven by a Webflow IX2 timeline that scrubs
-// the playhead in lock-step with the transition events (not free-running).
+// Play a segment of the transition Lottie (start frame → end frame) stretched
+// to fill `desiredDuration` seconds. Uses lottie-web's native playSegments +
+// setSpeed instead of a GSAP-driven scrub — same visual result (squiggle
+// playhead tracks the transition phase), but lottie-web handles the absolute-
+// frame mapping internally so there's no chance of "scrubbed into a clamped
+// range" or "proxy tween created with null range" failure modes.
 //
-// Each half (in-draw / out-clear) is stretched to fill the full 1s panel
-// window — so the squiggle's midpoint frame lands exactly as the panel
-// covers, and the final frame lands exactly as the panel finishes sweeping
-// off. No gap at the end of the out-half. The Buff -40 crop is 64 active
-// frames (1.28s native total), so each half played over 1s is ~0.64x native
-// speed — well within Lottie's smooth-scrub range.
-//
-// Fallback path: if lottieRange isn't captured yet (e.g. the very first
-// click happens before DOMLoaded fires), play the file natively. Less
-// precise but never invisible.
-function syncLottieToTimeline(tl, fromFrame, toFrame, duration, position) {
+// IMPORTANT: this is meant to be wrapped in an arrow function at the call
+// site so lottieRange is resolved at PLAYBACK time, not at timeline-build
+// time. On the very first click (before the Lottie's DOMLoaded fires) this
+// gives us a free retry — by the time the call() position plays, the file
+// has had milliseconds to load and the range is populated.
+function playLottieSegment(startFrame, endFrame, desiredDuration) {
   if (!transitionLottie) return;
-  if (!lottieRange) {
-    tl.call(() => {
-      if (!transitionLottie) return;
-      transitionLottie.setSpeed(1);
-      transitionLottie.play();
-    }, null, position);
+  if (typeof startFrame !== "number" || typeof endFrame !== "number") {
+    // Range wasn't captured — let the file play at native speed from wherever
+    // it is. Worst case it plays in 1.28s instead of the desired window;
+    // it's never invisible.
+    transitionLottie.setSpeed(1);
+    transitionLottie.play();
     return;
   }
-  const proxy = { f: fromFrame };
-  tl.set(proxy, { f: fromFrame }, position);
-  tl.to(proxy, {
-    f: toFrame,
-    duration: duration,
-    ease: "none",
-    onUpdate: () => {
-      if (transitionLottie) transitionLottie.goToAndStop(proxy.f, true);
-    },
-  }, position);
+  const segmentFrames = Math.abs(endFrame - startFrame);
+  const fps = transitionLottie.frameRate || 50;
+  const nativeDuration = segmentFrames / fps;
+  const speed = desiredDuration > 0 ? nativeDuration / desiredDuration : 1;
+  transitionLottie.setSpeed(speed);
+  transitionLottie.playSegments([startFrame, endFrame], true);
 }
 
 function resetTransitionLottie() {
   if (!transitionLottie) return;
+  // playSegments mutates firstFrame/totalFrames on the lottie instance — reset
+  // to the file's natural range first so subsequent transitions don't read
+  // a stale segment as "the file".
+  if (typeof transitionLottie.resetSegments === "function") {
+    transitionLottie.resetSegments(true);
+  }
+  transitionLottie.setSpeed(1);
   const startFrame = lottieRange ? lottieRange.ip : 0;
   transitionLottie.goToAndStop(startFrame, true);
 }
@@ -312,14 +312,14 @@ function runPageLeaveAnimation(current, next) {
     duration: 1,
   }, "<");
 
-  // Squiggle's in-half — short anticipation beat (panel rising solo) then the
-  // squiggle joins. Starts at 0.2s, runs 0.8s to land midpoint at 1s (panel
-  // cover). The 0.2s delay shifts the squiggle's "interesting" mid-stroke
-  // frames later in the leave window, so the eye stops tracking the rising
-  // panel before the draw starts — fixes the "you miss the beginning"
-  // perception. syncLottieToTimeline falls back to a native play internally
-  // if lottieRange isn't captured yet.
-  syncLottieToTimeline(tl, lottieRange?.ip, lottieRange?.half, 0.8, 0.2);
+  // Squiggle's in-half — kicks at 0.2s into the leave so the panel gets a
+  // brief solo anticipation beat, then the squiggle joins and lands midpoint
+  // at 1s (panel cover). Wrapped in an arrow function so lottieRange is read
+  // at PLAYBACK time, not build time — first-click safety in case the
+  // Lottie's DOMLoaded hasn't fired by the time the user clicks.
+  tl.call(() => {
+    playLottieSegment(lottieRange?.ip, lottieRange?.half, 0.8);
+  }, null, 0.2);
 
   // Current page slides up as it gets covered
   tl.fromTo(current, {
@@ -383,12 +383,13 @@ function runPageEnterAnimation(next) {
     immediateRender: false
   }, "startEnter");
 
-  // Squiggle's out-half scrubs across the FULL 1s of panel exit — midpoint
-  // frame at startEnter, final frame at startEnter+1 (panel done). Tracks
-  // the panel motion exactly so the squiggle clears off as the panel finishes
-  // sweeping. No gap at the tail (previous version was 0.36s short, leaving
-  // the squiggle done while the blue was still finishing).
-  syncLottieToTimeline(tl, lottieRange?.half, lottieRange?.op, 1.0, "startEnter");
+  // Squiggle's out-half kicks at startEnter — picks up from midpoint where
+  // the in-half left off, stretched to fill the full 1s of panel exit so the
+  // final frame lands exactly with the panel done. Arrow-wrapped for the
+  // same playback-time read as the in-half above.
+  tl.call(() => {
+    playLottieSegment(lottieRange?.half, lottieRange?.op, 1.0);
+  }, null, "startEnter");
 
   // Bottom curve scales out — rounded trailing edge
   tl.fromTo(transitionPanelBottom, {
