@@ -312,11 +312,14 @@ function runPageLeaveAnimation(current, next) {
     duration: 1,
   }, "<");
 
-  // Squiggle's in-half scrubs across the FULL 1s of panel sweep — frame ip
-  // at t=0 (click), midpoint frame at t=1s (panel covers). Tracks the panel
-  // motion exactly so the draw-in lands with the cover. syncLottieToTimeline
-  // falls back to a native play internally if lottieRange isn't captured yet.
-  syncLottieToTimeline(tl, lottieRange?.ip, lottieRange?.half, 1.0, 0);
+  // Squiggle's in-half — short anticipation beat (panel rising solo) then the
+  // squiggle joins. Starts at 0.2s, runs 0.8s to land midpoint at 1s (panel
+  // cover). The 0.2s delay shifts the squiggle's "interesting" mid-stroke
+  // frames later in the leave window, so the eye stops tracking the rising
+  // panel before the draw starts — fixes the "you miss the beginning"
+  // perception. syncLottieToTimeline falls back to a native play internally
+  // if lottieRange isn't captured yet.
+  syncLottieToTimeline(tl, lottieRange?.ip, lottieRange?.half, 0.8, 0.2);
 
   // Current page slides up as it gets covered
   tl.fromTo(current, {
