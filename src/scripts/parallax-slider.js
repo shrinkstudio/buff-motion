@@ -42,6 +42,19 @@ export function initParallaxSlider(scope) {
       (slide) => slide.querySelector("[data-parallax-inner]")
     );
 
+    // Eager + decode all slide imagery up front. Webflow defaults <img> to
+    // loading="lazy", which means offscreen slides don't actually fetch until
+    // the slider's translateX brings them close to the viewport — by which
+    // point it's too late, and you see a black gap where the slide should
+    // render. Forcing eager + .decode() ensures every slide is paint-ready
+    // before the slider's onUpdate starts transforming them.
+    wrapper.querySelectorAll("img").forEach((img) => {
+      if (img.loading === "lazy") img.loading = "eager";
+      if (typeof img.decode === "function" && !img.complete) {
+        img.decode().catch(() => {});
+      }
+    });
+
     const amountAttr = wrapper.getAttribute("data-parallax-amount");
     const amount = amountAttr !== null ? parseFloat(amountAttr) : 12;
 
