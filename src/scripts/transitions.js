@@ -59,6 +59,12 @@ console.log("[buff] Bundle loaded — barba:", typeof barba, "gsap:", typeof gsa
 // TRANSITION LOTTIE SETUP
 // -----------------------------------------
 
+// Captured ONCE when the Lottie's JSON has loaded, so we don't reach into
+// lottie-web internals during the transition itself. Stores absolute file
+// frames for the active range — works whether the file is the -40 crop
+// (ip=43, op=107) or the uncropped V1 (ip=0, op=107) or anything else.
+let lottieRange = null; // { ip, half, op } | null
+
 function initTransitionLottie() {
   const container = document.querySelector("[data-transition-lottie]");
   if (!container || transitionLottie) return;
@@ -76,59 +82,62 @@ function initTransitionLottie() {
     autoplay: false,
     path: src,
   });
+
+  // Capture the file's active range once the JSON finishes parsing. We use
+  // playSegments later, which takes absolute file frames — so we need the
+  // file's real ip/op, not lottie-web's raw-frame indices.
+  transitionLottie.addEventListener("DOMLoaded", () => {
+    const ip = typeof transitionLottie.firstFrame === "number" ? transitionLottie.firstFrame : 0;
+    const total = transitionLottie.totalFrames || 0;
+    if (total > 0) {
+      lottieRange = {
+        ip: ip,
+        half: ip + Math.floor(total / 2),
+        op: ip + total,
+      };
+      // Park the playhead on the first active frame so the Lottie is in a
+      // known state before the first transition fires.
+      transitionLottie.goToAndStop(ip, true);
+      console.log("[buff] Transition Lottie loaded — active range:", lottieRange);
+    } else {
+      console.warn("[buff] Transition Lottie loaded but totalFrames is 0 — falling back to native play");
+    }
+  });
 }
 
-// Frame range — uses ABSOLUTE file frames within the Lottie's active range.
-//
-// Why this matters: the squiggle file (Trans_Squiggle_In-Out-40.json) has
-// ip=43, op=107 — its drawable content lives in absolute frames 43-107, not
-// 0-64. lottie-web's goToAndStop(value, true) does setCurrentRawFrameValue
-// (value - firstFrame) — so goToAndStop(0, true) on a file with ip=43 maps
-// to raw frame -43, which clamps and just renders frame 43 the whole time.
-// Scrubbing 0 → 64 would clamp 0 → 32 and then run frame 43 → 64 — i.e.
-// only the first ~33% of the active range. Reads as "the squiggle starts
-// about half way through" (which is exactly what the client flagged).
-//
-// Fix: scrub in absolute frames within ip → op so the FULL squiggle plays.
-// Defaults to the known good range for the brand-supplied -40 crop if the
-// Lottie hasn't populated firstFrame/totalFrames yet on the very first
-// navigation.
-function getLottieFrameRange() {
-  const DEFAULT = { start: 43, half: 75, end: 107 };
-  if (!transitionLottie) return DEFAULT;
-  const ip = typeof transitionLottie.firstFrame === 'number' ? transitionLottie.firstFrame : 43;
-  const total = transitionLottie.totalFrames || 64;
-  return {
-    start: ip,
-    half: ip + Math.floor(total / 2),
-    end: ip + total,
-  };
-}
-
-// Scrub the Lottie playhead from `from` → `to` over `duration`, synced to a GSAP
-// timeline. Replaces the old "play full Lottie at 0.4s" call so the squiggle
-// tracks the panel sweep — in-frames during leave, out-frames during enter,
-// one fluid motion from click to ready.
-function scrubTransitionLottie(tl, from, to, duration, position) {
+// Play the in-half of the squiggle (file's ip → midpoint) at native speed.
+// At fr=50 with a 64-frame active range that's ~0.32s per half — comfortably
+// inside the 0.6s leave window after the 0.4s start delay (panel rising).
+function playLottieInHalf() {
   if (!transitionLottie) return;
-  const proxy = { f: from };
-  tl.set(proxy, { f: from }, position);
-  tl.to(proxy, {
-    f: to,
-    duration: duration,
-    ease: "none",
-    onUpdate: () => {
-      if (transitionLottie) transitionLottie.goToAndStop(proxy.f, true);
-    },
-  }, position);
+  if (lottieRange) {
+    transitionLottie.setSpeed(1);
+    transitionLottie.playSegments([lottieRange.ip, lottieRange.half], true);
+  } else {
+    // Fallback path — Lottie loaded but range wasn't captured (e.g. DOMLoaded
+    // hasn't fired yet on the very first click). Just play the whole file.
+    transitionLottie.goToAndStop(0, true);
+    transitionLottie.play();
+  }
+}
+
+// Play the out-half (midpoint → op) at native speed during the enter sweep.
+function playLottieOutHalf() {
+  if (!transitionLottie) return;
+  if (lottieRange) {
+    transitionLottie.setSpeed(1);
+    transitionLottie.playSegments([lottieRange.half, lottieRange.op], true);
+  } else {
+    // Fallback — already mid-play from the in-half fallback above, just keep
+    // going.
+    transitionLottie.play();
+  }
 }
 
 function resetTransitionLottie() {
   if (!transitionLottie) return;
-  // Reset to the absolute first ACTIVE frame, not file frame 0 — see
-  // getLottieFrameRange comment for why.
-  const range = getLottieFrameRange();
-  transitionLottie.goToAndStop(range.start, true);
+  const startFrame = lottieRange ? lottieRange.ip : 0;
+  transitionLottie.goToAndStop(startFrame, true);
 }
 
 
@@ -193,7 +202,10 @@ function initAfterEnterFunctions(next) {
   if (has('[data-social-share]'))                  initSocialShare(nextPage);
   if (has('[data-filter-group]'))                  initFilter(nextPage);
   if (has('[data-home-intro]'))                    initHomeIntro(nextPage);
-  if (has('[data-sidenav-wrap]'))                  initSidenav(nextPage);
+  // Sidenav usually lives in the global header (outside the Barba container),
+  // so `has` (which scopes to nextPage) would return false and we'd skip
+  // re-init after every transition. Query the whole document instead.
+  if (document.querySelector('[data-sidenav-wrap]')) initSidenav(nextPage);
 
   // Re-evaluate inline scripts inside the new container (Webflow embeds)
   reinitScripts(nextPage);
@@ -292,13 +304,11 @@ function runPageLeaveAnimation(current, next) {
     duration: 1,
   }, "<");
 
-  // Lottie scrubs from frame 0 → halfway over 0.4 → 1.0s — delayed start so the
-  // in-portion plays while the panel is already mid-cover and the squiggle is
-  // dead-centre on screen (rather than racing through while the eye still
-  // tracks the rising panel). Reaches midpoint exactly as the panel fully
-  // covers, then holds during the 0.35s dwell before the out half kicks in.
-  const leaveRange = getLottieFrameRange();
-  scrubTransitionLottie(tl, leaveRange.start, leaveRange.half, 0.6, 0.4);
+  // Squiggle's in-half plays at native speed starting at 0.4s into the leave —
+  // by which point the panel has risen ~40% and the Lottie is centre-stage.
+  // playSegments handles the absolute-frame mapping internally so there's no
+  // chance of clamping to a blank frame range.
+  tl.call(playLottieInHalf, null, 0.4);
 
   // Current page slides up as it gets covered
   tl.fromTo(current, {
@@ -362,12 +372,9 @@ function runPageEnterAnimation(next) {
     immediateRender: false
   }, "startEnter");
 
-  // Lottie scrubs from halfway → end over 0.6s starting at startEnter — symmetric
-  // with the leave half (both halves at near-native pace). The panel keeps
-  // sweeping off for another 0.4s after the squiggle finishes, by which point
-  // the Lottie's tail frames are empty space and only the panel exit remains.
-  const enterRange = getLottieFrameRange();
-  scrubTransitionLottie(tl, enterRange.half, enterRange.end, 0.6, "startEnter");
+  // Squiggle's out-half plays at native speed from startEnter — picks up at
+  // the midpoint where the in-half left off, clears off as the panel exits.
+  tl.call(playLottieOutHalf, null, "startEnter");
 
   // Bottom curve scales out — rounded trailing edge
   tl.fromTo(transitionPanelBottom, {

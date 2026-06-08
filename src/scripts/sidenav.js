@@ -27,6 +27,53 @@ let keyHandler = null;
 let arrowLottie = null;
 let bgLottie = null;
 
+// Resets all sidenav DOM state to a clean closed baseline. Called at the
+// start of init (in case stale state survives a Barba container swap, eg the
+// user clicked a sidenav link mid-open) and inside destroy.
+//
+// Why: when the user navigates while the nav is open, destroy.kill() halts
+// the open timeline but doesn't revert the inline transforms GSAP applied —
+// so overlay/panels/labels stay frozen at their mid-open positions on the
+// next page, the burger gets z-stacked underneath them, body still carries
+// data-menu-status="open" (Lenis stays stopped), and clicking the burger
+// reads "open" → triggers close on an already-stale state.
+function resetSidenavState() {
+  // Query the whole document — sidenav often lives in a global header
+  // outside the Barba container, so scope-limited queries miss it after
+  // a transition.
+  const wrap = document.querySelector("[data-sidenav-wrap]");
+  if (wrap) {
+    wrap.setAttribute("data-nav-state", "closed");
+    const targets = [
+      wrap,
+      wrap.querySelector("[data-sidenav-overlay]"),
+      wrap.querySelector("[data-sidenav-menu]"),
+      ...wrap.querySelectorAll("[data-sidenav-panel]"),
+      ...wrap.querySelectorAll("[data-sidenav-link]"),
+      ...wrap.querySelectorAll("[data-sidenav-fade]"),
+    ].filter(Boolean);
+    if (targets.length) gsap.set(targets, { clearProps: "all" });
+    // Ensure the wrap itself is hidden again (its CSS may rely on display:none
+    // for closed state).
+    gsap.set(wrap, { display: "none" });
+  }
+
+  const button = document.querySelector("[data-sidenav-button]");
+  if (button) {
+    const targets = [
+      button,
+      ...button.querySelectorAll("[data-sidenav-label]"),
+      button.querySelector("[data-sidenav-icon]"),
+    ].filter(Boolean);
+    if (targets.length) gsap.set(targets, { clearProps: "all" });
+  }
+
+  document.body.setAttribute("data-menu-status", "");
+  if (window.__buffMotionLenis && typeof window.__buffMotionLenis.start === "function") {
+    window.__buffMotionLenis.start();
+  }
+}
+
 function loadNavLottie(container) {
   if (!container || typeof lottie === "undefined") return null;
   const src = container.getAttribute("data-lottie-src") || container.getAttribute("data-src");
@@ -42,8 +89,16 @@ function loadNavLottie(container) {
 
 export function initSidenav(scope) {
   scope = scope || document;
-  navWrap = scope.querySelector("[data-sidenav-wrap]");
+  // Sidenav often lives in a global header outside the Barba container, so a
+  // scope-limited query misses it after navigation. Fall back to document.
+  navWrap = scope.querySelector("[data-sidenav-wrap]") || document.querySelector("[data-sidenav-wrap]");
   if (!navWrap) return;
+
+  // Force a clean closed baseline before binding handlers. If the user
+  // navigated mid-open, the DOM still carries stale GSAP transforms from
+  // the killed open timeline — wiping them here means the first click on
+  // the new page reads "closed" and runs openNav correctly.
+  resetSidenavState();
 
   // The "buff" ease is registered globally in transitions.js (cubic-bezier(.76, .007, .25, 1)).
   // Used throughout the sidenav timeline below.
@@ -211,13 +266,11 @@ export function destroySidenav() {
     tl = null;
   }
 
-  // If the menu was open mid-transition (user clicked a sidenav link), the
-  // body still carries data-menu-status="open" and Lenis was paused by openNav.
-  // The next page would inherit a stuck state. Reset both before tearing down.
-  if (document.body.getAttribute("data-menu-status") === "open") {
-    document.body.setAttribute("data-menu-status", "");
-    if (window.__buffMotionLenis) window.__buffMotionLenis.start();
-  }
+  // Unconditional state reset — clears inline GSAP transforms, hides the wrap,
+  // resets data-nav-state, restarts Lenis. Covers the mid-open-navigation case
+  // (where the body still carries data-menu-status="open") AND the all-closed
+  // case (cheap no-op).
+  resetSidenavState();
 
   if (arrowLottie) {
     arrowLottie.destroy();
