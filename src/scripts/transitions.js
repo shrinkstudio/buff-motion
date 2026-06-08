@@ -105,33 +105,41 @@ function initTransitionLottie() {
   });
 }
 
-// Play the in-half of the squiggle (file's ip → midpoint) at native speed.
-// At fr=50 with a 64-frame active range that's ~0.32s per half — comfortably
-// inside the 0.6s leave window after the 0.4s start delay (panel rising).
-function playLottieInHalf() {
+// Sync the Lottie playhead to a GSAP timeline by scrubbing from `from` → `to`
+// over `duration` at `position`. Matches V1 buffmotion.com's pattern: the
+// transition Lottie there is driven by a Webflow IX2 timeline that scrubs
+// the playhead in lock-step with the transition events (not free-running).
+//
+// Each half (in-draw / out-clear) is stretched to fill the full 1s panel
+// window — so the squiggle's midpoint frame lands exactly as the panel
+// covers, and the final frame lands exactly as the panel finishes sweeping
+// off. No gap at the end of the out-half. The Buff -40 crop is 64 active
+// frames (1.28s native total), so each half played over 1s is ~0.64x native
+// speed — well within Lottie's smooth-scrub range.
+//
+// Fallback path: if lottieRange isn't captured yet (e.g. the very first
+// click happens before DOMLoaded fires), play the file natively. Less
+// precise but never invisible.
+function syncLottieToTimeline(tl, fromFrame, toFrame, duration, position) {
   if (!transitionLottie) return;
-  if (lottieRange) {
-    transitionLottie.setSpeed(1);
-    transitionLottie.playSegments([lottieRange.ip, lottieRange.half], true);
-  } else {
-    // Fallback path — Lottie loaded but range wasn't captured (e.g. DOMLoaded
-    // hasn't fired yet on the very first click). Just play the whole file.
-    transitionLottie.goToAndStop(0, true);
-    transitionLottie.play();
+  if (!lottieRange) {
+    tl.call(() => {
+      if (!transitionLottie) return;
+      transitionLottie.setSpeed(1);
+      transitionLottie.play();
+    }, null, position);
+    return;
   }
-}
-
-// Play the out-half (midpoint → op) at native speed during the enter sweep.
-function playLottieOutHalf() {
-  if (!transitionLottie) return;
-  if (lottieRange) {
-    transitionLottie.setSpeed(1);
-    transitionLottie.playSegments([lottieRange.half, lottieRange.op], true);
-  } else {
-    // Fallback — already mid-play from the in-half fallback above, just keep
-    // going.
-    transitionLottie.play();
-  }
+  const proxy = { f: fromFrame };
+  tl.set(proxy, { f: fromFrame }, position);
+  tl.to(proxy, {
+    f: toFrame,
+    duration: duration,
+    ease: "none",
+    onUpdate: () => {
+      if (transitionLottie) transitionLottie.goToAndStop(proxy.f, true);
+    },
+  }, position);
 }
 
 function resetTransitionLottie() {
@@ -304,11 +312,11 @@ function runPageLeaveAnimation(current, next) {
     duration: 1,
   }, "<");
 
-  // Squiggle's in-half plays at native speed starting at 0.4s into the leave —
-  // by which point the panel has risen ~40% and the Lottie is centre-stage.
-  // playSegments handles the absolute-frame mapping internally so there's no
-  // chance of clamping to a blank frame range.
-  tl.call(playLottieInHalf, null, 0.4);
+  // Squiggle's in-half scrubs across the FULL 1s of panel sweep — frame ip
+  // at t=0 (click), midpoint frame at t=1s (panel covers). Tracks the panel
+  // motion exactly so the draw-in lands with the cover. syncLottieToTimeline
+  // falls back to a native play internally if lottieRange isn't captured yet.
+  syncLottieToTimeline(tl, lottieRange?.ip, lottieRange?.half, 1.0, 0);
 
   // Current page slides up as it gets covered
   tl.fromTo(current, {
@@ -372,9 +380,12 @@ function runPageEnterAnimation(next) {
     immediateRender: false
   }, "startEnter");
 
-  // Squiggle's out-half plays at native speed from startEnter — picks up at
-  // the midpoint where the in-half left off, clears off as the panel exits.
-  tl.call(playLottieOutHalf, null, "startEnter");
+  // Squiggle's out-half scrubs across the FULL 1s of panel exit — midpoint
+  // frame at startEnter, final frame at startEnter+1 (panel done). Tracks
+  // the panel motion exactly so the squiggle clears off as the panel finishes
+  // sweeping. No gap at the tail (previous version was 0.36s short, leaving
+  // the squiggle done while the blue was still finishing).
+  syncLottieToTimeline(tl, lottieRange?.half, lottieRange?.op, 1.0, "startEnter");
 
   // Bottom curve scales out — rounded trailing edge
   tl.fromTo(transitionPanelBottom, {
