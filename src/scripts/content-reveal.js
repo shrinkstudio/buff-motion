@@ -9,8 +9,19 @@
 //   [data-stagger]               — stagger delay in ms (default: 100)
 //   [data-distance]              — slide distance (default: "40px")
 //   [data-start]                 — ScrollTrigger start (default: "top 80%")
+//   [data-ease]                  — override ease (default: "power3.out" — smooth rise)
+//   [data-duration]              — override anim duration in seconds (default: 1.0)
 //   [data-ignore="true"]         — skip this child from the reveal
+//
+// Note: deliberately does NOT inherit the brand "buff" ease. That curve is
+// near-flat at the start, hard-punch through the middle, flat at the end —
+// designed for brand-moment snaps (intro underline, transition panel, sidenav
+// wipe), but reads as "stuck → pop → stop" on incidental scroll fade-ins.
+// Content reveal uses a smooth ease-out so motion feels deliberate, not glitchy.
 // -----------------------------------------
+
+const DEFAULT_EASE = 'power3.out';
+const DEFAULT_DURATION = 1.0;
 
 let ctx = null;
 
@@ -30,7 +41,9 @@ export function initContentReveal(scope) {
       const groupDistance = groupEl.getAttribute('data-distance') || '40px';
       const triggerStart = groupEl.getAttribute('data-start') || 'top 80%';
 
-      const animDuration = 0.8;
+      const animEase = groupEl.getAttribute('data-ease') || DEFAULT_EASE;
+      const durationAttr = parseFloat(groupEl.getAttribute('data-duration'));
+      const animDuration = isNaN(durationAttr) ? DEFAULT_DURATION : durationAttr;
 
       // Reduced motion: show immediately
       if (prefersReduced) {
@@ -50,6 +63,7 @@ export function initContentReveal(scope) {
             y: 0,
             autoAlpha: 1,
             duration: animDuration,
+            ease: animEase,
             onComplete: () => gsap.set(groupEl, { clearProps: 'all' })
           })
         });
@@ -124,6 +138,7 @@ export function initContentReveal(scope) {
                 y: 0,
                 autoAlpha: 1,
                 duration: animDuration,
+                ease: animEase,
                 onComplete: () => gsap.set(slot.el, { clearProps: 'all' })
               }, slotTime);
             } else {
@@ -132,6 +147,7 @@ export function initContentReveal(scope) {
                   y: 0,
                   autoAlpha: 1,
                   duration: animDuration,
+                  ease: animEase,
                   onComplete: () => gsap.set(slot.parentEl, { clearProps: 'all' })
                 }, slotTime);
               }
@@ -142,6 +158,7 @@ export function initContentReveal(scope) {
                   y: 0,
                   autoAlpha: 1,
                   duration: animDuration,
+                  ease: animEase,
                   onComplete: () => gsap.set(nestedChild, { clearProps: 'all' })
                 }, slotTime + nestedIndex * nestedStaggerSec);
               });
