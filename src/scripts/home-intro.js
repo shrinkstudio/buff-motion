@@ -171,8 +171,11 @@ export function initHomeIntro(scope) {
     }, null, 0.95);
   }
 
-  // Phase 4: hold for the squiggle (~1.3s draw), then slide the panel up off-screen
-  tl.to(root, { yPercent: -100, duration: 0.8, ease: "buff" }, 2.3);
+  // Phase 4: hold for the squiggle (~1.3s draw), then slide the panel up off-screen.
+  // Duration 1.0s + buff ease matches the page transition's panel sweep
+  // (transitions.js → runPageLeaveAnimation) — same curve, same length, so the
+  // intro reveal and a subsequent page transition feel like the same motion.
+  tl.to(root, { yPercent: -100, duration: 1.0, ease: "buff" }, 2.3);
 }
 
 export function destroyHomeIntro() {
