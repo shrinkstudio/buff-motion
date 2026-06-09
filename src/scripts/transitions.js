@@ -193,13 +193,7 @@ function initBeforeEnterFunctions(next) {
   destroyHeroParallax();
   destroySocialShare();
   destroyFilter();
-  // NOTE: destroySidenav intentionally NOT called here. With sync:true
-  // transitions, beforeEnter fires BEFORE the leave/enter animations — so
-  // destroying the sidenav here snap-closes the menu, creating a brief
-  // flash where the user sees the page underneath before the transition
-  // panel covers it. By deferring the destroy until afterEnter (run once
-  // the panel has covered + new page is settled), the menu close happens
-  // invisibly behind the transition panel. See initAfterEnterFunctions.
+  destroySidenav();
 }
 
 function initAfterEnterFunctions(next) {
@@ -225,16 +219,10 @@ function initAfterEnterFunctions(next) {
   if (has('[data-social-share]'))                  initSocialShare(nextPage);
   if (has('[data-filter-group]'))                  initFilter(nextPage);
   if (has('[data-home-intro]'))                    initHomeIntro(nextPage);
-  // Sidenav: destroy the previous instance, then init fresh. Deferred from
-  // beforeEnter to here so the menu close happens BEHIND the transition panel
-  // (which has already covered the viewport by the time afterEnter fires) —
-  // no flash, no snap, no lag perception. Order matters: destroy first to
-  // kill timelines + reset state, then init on the next page's DOM refs.
-  //
-  // Sidenav usually lives in the global header (outside the Barba container),
-  // so `has` (which scopes to nextPage) would return false and we'd skip
-  // re-init after every transition. Query the whole document instead.
-  destroySidenav();
+  // Sidenav lives inside the Barba container, so it's swapped on every page
+  // navigation. Destroy happens in beforeEnter (alongside the other modules)
+  // and init happens here. The querySelector is document-wide because `has`
+  // (scoped to nextPage) is matched here for consistency — both work.
   if (document.querySelector('[data-sidenav-wrap]')) initSidenav(nextPage);
 
   // Re-evaluate inline scripts inside the new container (Webflow embeds)
