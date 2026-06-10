@@ -117,6 +117,21 @@ export function initLottieAnimations(scope) {
       });
 
       triggers.push({ st, anim: () => anim, target });
+
+      // ScrollTrigger only fires onEnter/onEnterBack on actual scroll direction
+      // changes — NOT on initial page load. If a lottie's trigger is already
+      // past its start line at scroll=0 (above the fold, or because the user
+      // navigated to a page where this section is visible immediately), the
+      // callback would never fire and the lottie would never play.
+      //
+      // Defer to the next frame so ScrollTrigger has finished its initial
+      // measurement (and our own ScrollTrigger.refresh() at the end of
+      // initAfterEnterFunctions has run), then manually fire handleEnter if
+      // the trigger is currently active. Matches the manual initial-state
+      // check content-reveal does for data-reveal-group above the fold.
+      requestAnimationFrame(() => {
+        if (st.isActive) handleEnter();
+      });
     } else {
       // No ScrollTrigger — just load immediately
       handleEnter();
