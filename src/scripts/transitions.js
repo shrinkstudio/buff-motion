@@ -567,7 +567,19 @@ function initLenis() {
 
 function resetPage(container) {
   window.scrollTo(0, 0);
-  gsap.set(container, { clearProps: "position,top,left,right" });
+  // Clear position/offset props (the leave animation set these to fixed/0
+  // for the transition handoff) AND every transform-related prop GSAP set
+  // via tl.from(next, { y: "15dvh" }) in runPageEnterAnimation. Without
+  // clearing transform/translate/y, page-main keeps an inline
+  // transform: translate3d(0,0,0) forever — that's a non-none transform,
+  // which makes page-main the containing block for ALL position:fixed
+  // descendants (sidenav__nav, transition overlays, modals…). The result:
+  // every position:fixed element on the page scrolls with the page after
+  // any navigation, instead of staying anchored to the viewport. The
+  // sidenav-at-y=-2237 bug after Info→Studio→Info is exactly this.
+  gsap.set(container, {
+    clearProps: "position,top,left,right,transform,translate,x,y,xPercent,yPercent,scale,rotate"
+  });
 
   if (hasLenis) {
     lenis.resize();
