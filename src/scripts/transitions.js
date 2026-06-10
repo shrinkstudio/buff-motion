@@ -567,18 +567,24 @@ function initLenis() {
 
 function resetPage(container) {
   window.scrollTo(0, 0);
-  // Clear position/offset props (the leave animation set these to fixed/0
-  // for the transition handoff) AND every transform-related prop GSAP set
-  // via tl.from(next, { y: "15dvh" }) in runPageEnterAnimation. Without
-  // clearing transform/translate/y, page-main keeps an inline
-  // transform: translate3d(0,0,0) forever — that's a non-none transform,
-  // which makes page-main the containing block for ALL position:fixed
-  // descendants (sidenav__nav, transition overlays, modals…). The result:
-  // every position:fixed element on the page scrolls with the page after
-  // any navigation, instead of staying anchored to the viewport. The
-  // sidenav-at-y=-2237 bug after Info→Studio→Info is exactly this.
   gsap.set(container, {
     clearProps: "position,top,left,right,transform,translate,x,y,xPercent,yPercent,scale,rotate"
+  });
+
+  // Belt-and-braces: GSAP's clearProps reliably zeros out transform-related
+  // values but may leave behind `transform: translate(0px, 0px)` (identity)
+  // rather than actually removing the inline style. Per CSS spec, ANY
+  // computed transform value other than `none` (INCLUDING identity matrix)
+  // makes the element a containing block for position:fixed descendants.
+  // That's what was leaking after the transform clearProps in the previous
+  // commit didn't fully fix the sidenav-scrolls-with-page bug.
+  //
+  // Force-remove these inline styles directly so the element returns to a
+  // truly transform-less state. Page-main no longer creates a containing
+  // block; position:fixed children (sidenav, modals, transition panels)
+  // anchor to the viewport again.
+  ['transform', 'translate', 'scale', 'rotate'].forEach(prop => {
+    container.style.removeProperty(prop);
   });
 
   if (hasLenis) {
