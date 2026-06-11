@@ -20,6 +20,10 @@
 const MAX_OFFSET = 25;
 
 let instances = [];
+let resizeHandler = null;
+let resizeTimeout = null;
+let lastWidth = typeof window !== "undefined" ? window.innerWidth : 0;
+let lastScope = null;
 
 export function initParallaxSlider(scope) {
   scope = scope || document;
@@ -93,9 +97,32 @@ export function initParallaxSlider(scope) {
 
     instances.push({ wrapper, slider, tickerFn });
   });
+
+  // Wire up viewport-resize re-init. Smooothy measures the wrapper at init
+  // and doesn't re-measure on container/viewport changes — so a slider
+  // initialised at 1440px breaks visibly when the user is actually on 3440px
+  // (slides land in wrong positions, infinite loop wraparound misaligns,
+  // last slide disappears into a phantom gap). The fix is destroy + reinit
+  // on actual width changes (debounced, width-delta-checked to ignore
+  // pointless trigger events like address bar collapse on mobile).
+  lastScope = scope;
+  if (!resizeHandler) {
+    resizeHandler = function () {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        const currentWidth = window.innerWidth;
+        if (currentWidth === lastWidth) return;
+        lastWidth = currentWidth;
+        if (!instances.length) return;
+        destroyParallaxSlider(/* preserveResizeHandler */ true);
+        if (lastScope) initParallaxSlider(lastScope);
+      }, 250);
+    };
+    window.addEventListener("resize", resizeHandler);
+  }
 }
 
-export function destroyParallaxSlider() {
+export function destroyParallaxSlider(preserveResizeHandler) {
   instances.forEach(({ wrapper, slider, tickerFn }) => {
     gsap.ticker.remove(tickerFn);
     if (slider && typeof slider.destroy === "function") {
@@ -110,4 +137,19 @@ export function destroyParallaxSlider() {
     delete wrapper._parallaxTicker;
   });
   instances = [];
+
+  // On Barba navigation we tear the resize handler down too (init will rebind
+  // for the next page). On in-page resize re-init we keep it alive so we
+  // don't leak listeners every viewport delta.
+  if (!preserveResizeHandler) {
+    if (resizeHandler) {
+      window.removeEventListener("resize", resizeHandler);
+      resizeHandler = null;
+    }
+    if (resizeTimeout) {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = null;
+    }
+    lastScope = null;
+  }
 }
