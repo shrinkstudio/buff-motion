@@ -191,20 +191,27 @@ export function initSidenav(scope) {
 
     tl.set(navWrap, { display: "block" })
       .set(menu, { xPercent: 0 }, "<")
-      // Phase 1 (0 — ~0.55s): panels wipe in fast, overlay dims, button label flips
+      // Phase 1 (0 — ~0.55s): panels wipe in fast, overlay dims, button label flips.
+      // Tighter staggers than before (0.05→0.03, 0.06→0.04) — same visual rhythm
+      // but a shorter "busy window" so frame drops have less time to compound.
       .fromTo(overlay, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.45 }, 0)
-      .fromTo(menuButtonTexts, { yPercent: 0 }, { yPercent: -100, stagger: 0.05, duration: 0.45 }, 0)
-      .fromTo(bgPanels, { xPercent: 101 }, { xPercent: 0, stagger: 0.06, duration: 0.55 }, 0)
-      // Phase 2 (~0.5s onwards): bg squiggle starts drawing into the now-settled panels
-      .call(() => { if (bgLottie) bgLottie.goToAndPlay(0, true); }, null, 0.5)
-      // Phase 3 (~0.55s onwards): items animate in on top of the drawing squiggle
+      .fromTo(menuButtonTexts, { yPercent: 0 }, { yPercent: -100, stagger: 0.03, duration: 0.45 }, 0)
+      .fromTo(bgPanels, { xPercent: 101 }, { xPercent: 0, stagger: 0.04, duration: 0.55 }, 0)
+      // Phase 2: bg squiggle starts AFTER the panels have settled (0.6s, was 0.5s).
+      // Deferring by 100ms separates the SVG render cost from the link/fade
+      // stagger that kicks in at 0.55s — stops the t=0.5s GPU/CPU spike where
+      // panels finish + bg Lottie starts + links begin all happen in one frame.
+      .call(() => { if (bgLottie) bgLottie.goToAndPlay(0, true); }, null, 0.6)
+      // Phase 3 (~0.55s onwards): items animate in on top of the drawing squiggle.
+      // Stagger reduced (0.08→0.05) — same visual feel, finishes ~0.2s sooner so
+      // the whole open animation completes in a tighter window.
       .fromTo(menuLinks,
         { yPercent: 120, autoAlpha: 0 },
-        { yPercent: 0, autoAlpha: 1, stagger: 0.08, duration: 0.9 },
+        { yPercent: 0, autoAlpha: 1, stagger: 0.05, duration: 0.9 },
         0.55)
       .fromTo(fadeTargets,
         { autoAlpha: 0, yPercent: 30 },
-        { autoAlpha: 1, yPercent: 0, stagger: 0.04, duration: 0.6 },
+        { autoAlpha: 1, yPercent: 0, stagger: 0.025, duration: 0.6 },
         0.8);
 
     // Arrow Lottie plays at t=0 — must react instantly to the click, not delayed.

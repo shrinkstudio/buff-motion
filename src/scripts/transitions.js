@@ -193,7 +193,22 @@ function initBeforeEnterFunctions(next) {
   destroyHeroParallax();
   destroySocialShare();
   destroyFilter();
-  destroySidenav();
+  // NOTE: destroySidenav intentionally NOT called here. With sync:true
+  // transitions, beforeEnter fires BEFORE leave/enter — so destroying the
+  // sidenav here snap-closes the menu, creating the "jolt" the client
+  // flagged before the transition panel even starts moving.
+  //
+  // Deferred to afterEnter (below) where it runs AFTER the leave panel has
+  // covered the viewport AND the new page has settled in. The menu close
+  // happens invisibly behind the transition panel.
+  //
+  // CAUTION: this was tried before (commit e4160b5) and reverted (999af6d)
+  // because the new page's menu didn't open afterwards. The cause was the
+  // OLD sidenav timeline still being mid-flight when the new init ran —
+  // GSAP targets ended up pointing at stale closures. THIS attempt mitigates
+  // by adding an unconditional tl.kill() + gsap.set clearProps in destroy,
+  // ensuring the OLD state is fully wiped before the NEW init runs (which
+  // happens in the same tick, immediately after destroy, in afterEnter).
 }
 
 function initAfterEnterFunctions(next) {
@@ -220,9 +235,11 @@ function initAfterEnterFunctions(next) {
   if (has('[data-filter-group]'))                  initFilter(nextPage);
   if (has('[data-home-intro]'))                    initHomeIntro(nextPage);
   // Sidenav lives inside the Barba container, so it's swapped on every page
-  // navigation. Destroy happens in beforeEnter (alongside the other modules)
-  // and init happens here. The querySelector is document-wide because `has`
-  // (scoped to nextPage) is matched here for consistency — both work.
+  // navigation. Destroy now happens here (deferred from beforeEnter) so the
+  // menu close happens INVISIBLY behind the transition panel — no jolt.
+  // Order matters: destroy first to kill old timeline + clear all GSAP
+  // inline transforms, then init on the new page's DOM.
+  destroySidenav();
   if (document.querySelector('[data-sidenav-wrap]')) initSidenav(nextPage);
 
   // Re-evaluate inline scripts inside the new container (Webflow embeds)
