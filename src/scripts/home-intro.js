@@ -14,13 +14,14 @@
 //   [data-lottie-frame]            — initial hold frame (default 0)
 //   [data-lottie-end-frame]        — last frame to play to (default = Lottie's totalFrames)
 //
-// Cadence (matches V1 buffmotion.com feel):
-//   0.20s — "Hey," rises (y:15 → 0, autoAlpha 0 → 1, 0.55s, buff ease)
-//   0.45s — "we're" rises (0.25s stagger)
-//   0.70s — "Buff" rises (0.25s stagger)
-//   0.95s — Squiggle Lottie plays its draw-on
-//   2.30s — Panel slides up off-screen (0.8s)
-//   3.10s — Done, hero video plays
+// Cadence (V1 buffmotion.com rhythm, slowed slightly per client feedback):
+//   0.20s — "Hey," rises (y:15 → 0, autoAlpha 0 → 1, 0.75s, buff ease)
+//   0.52s — "we're" rises (0.32s stagger)
+//   0.84s — "Buff" rises (0.32s stagger)
+//   1.15s — Squiggle Lottie plays its draw-on
+//   2.50s — Panel slides up off-screen (1.0s) + page content rises
+//   3.50s — Done, hero video plays
+//   (Mobile: intro skipped entirely — see the mobile branch in initHomeIntro)
 
 let tl = null;
 let lottieAnim = null;
@@ -184,23 +185,31 @@ export function initHomeIntro(scope) {
   tl.set(root, { autoAlpha: 1, yPercent: 0 });
   tl.set(items, { y: 15, autoAlpha: 0 });
 
-  // Phase 2: words rise + fade in, 0.25s stagger between them — matches V1 rhythm
-  tl.to(items, { y: 0, autoAlpha: 1, stagger: 0.25, duration: 0.55 }, 0.2);
+  // Phase 2: words rise + fade in. Slowed per client feedback ("needs to move
+  // a little slower") — duration 0.55 → 0.75, stagger 0.25 → 0.32. The rise
+  // reads as more relaxed without dragging the whole intro out.
+  //   "Hey,"  0.20 → 0.95
+  //   "we're" 0.52 → 1.27
+  //   "Buff"  0.84 → 1.59
+  tl.to(items, { y: 0, autoAlpha: 1, stagger: 0.32, duration: 0.75 }, 0.2);
 
-  // Phase 3: squiggle Lottie draws as "Buff" lands (~0.95s — third word started at 0.70s)
+  // Phase 3: squiggle Lottie draws as "Buff" is landing (~45% into its rise —
+  // same relationship as the original cadence, shifted for the slower words).
   if (lottieAnim) {
     tl.call(() => {
       const endAttr = lottieEl.getAttribute("data-lottie-end-frame");
       const endFrame = endAttr ? parseInt(endAttr, 10) : lottieAnim.totalFrames;
       lottieAnim.playSegments([startFrame, endFrame], true);
-    }, null, 0.95);
+    }, null, 1.15);
   }
 
   // Phase 4: hold for the squiggle (~1.3s draw), then slide the panel up off-screen.
   // Duration 1.0s + buff ease matches the page transition's panel sweep
   // (transitions.js → runPageLeaveAnimation) — same curve, same length, so the
   // intro reveal and a subsequent page transition feel like the same motion.
-  tl.to(root, { yPercent: -100, duration: 1.0, ease: "buff" }, 2.3);
+  // Position shifted 2.3 → 2.5 to preserve the squiggle-to-exit gap (1.35s)
+  // after the slower word cadence.
+  tl.to(root, { yPercent: -100, duration: 1.0, ease: "buff" }, 2.5);
 
   // Phase 5: page content rises from y:7dvh → 0 IN SYNC with the panel exit.
   // Halved from the original 15dvh — at 15dvh the rise was momentarily revealing
@@ -212,7 +221,7 @@ export function initHomeIntro(scope) {
   tl.fromTo(pageContent,
     { y: "7dvh" },
     { y: 0, duration: 1.0, ease: "buff" },
-    2.3
+    2.5
   );
 }
 
