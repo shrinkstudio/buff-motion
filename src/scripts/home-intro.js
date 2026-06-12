@@ -97,6 +97,23 @@ export function initHomeIntro(scope) {
   // Falls back to body so the rise still happens if Barba's markup is missing.
   const pageContent = document.querySelector('[data-barba="container"]') || document.body;
 
+  // Mobile: skip the intro preloader entirely (client request). Remove the
+  // panel immediately and start the hero video — no headline rise, no
+  // squiggle, no panel slide, no page-content rise, no scroll lock.
+  // hasPlayed is already set above so SPA returns to Home keep the same
+  // dismiss behaviour as desktop. Pair with a CSS hide on [data-home-intro]
+  // in the page head so the panel doesn't flash before this code runs.
+  if (window.matchMedia("(max-width: 767px)").matches) {
+    root.remove();
+    document.body.setAttribute("data-home-intro-status", "done");
+    if (videoEl) {
+      const playPromise = videoEl.play();
+      if (playPromise && typeof playPromise.catch === "function") playPromise.catch(() => {});
+    }
+    document.dispatchEvent(new CustomEvent("buff:home-intro-done"));
+    return;
+  }
+
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   // Pause the hero video on load so it doesn't burn cycles behind the preloader
