@@ -21,7 +21,7 @@ import { initSidenav, destroySidenav } from './sidenav.js';
 import { initSocialShare, destroySocialShare } from './social-share.js';
 import { initFilter, destroyFilter } from './filter.js';
 import { initHomeIntro, destroyHomeIntro } from './home-intro.js';
-import { initParallaxSlider, destroyParallaxSlider } from './parallax-slider.js';
+import { initDraggableMarquee, destroyDraggableMarquee } from './draggable-marquee.js';
 import { initNavOverHero, destroyNavOverHero } from './nav-over-hero.js';
 import { initHeroParallax, destroyHeroParallax } from './hero-parallax.js';
 
@@ -188,7 +188,7 @@ function initBeforeEnterFunctions(next) {
   destroyCursorMarquee();
   destroyLogoWall();
   destroyVideoHover();
-  destroyParallaxSlider();
+  destroyDraggableMarquee();
   destroyNavOverHero();
   destroyHeroParallax();
   destroySocialShare();
@@ -228,7 +228,7 @@ function initAfterEnterFunctions(next) {
   if (document.querySelector('.cursor'))             initCursorMarquee();
   if (has('[data-logo-wall-cycle-init]'))           initLogoWall(nextPage);
   if (has('[data-video-on-hover]'))                initVideoHover(nextPage);
-  if (has('[data-parallax-init]'))                 initParallaxSlider(nextPage);
+  if (has('[data-parallax-init]'))                 initDraggableMarquee(nextPage);
   if (has('[data-nav-over-hero-trigger]'))         initNavOverHero(nextPage);
   if (has('[data-nav-over-hero-trigger]'))         initHeroParallax(nextPage);
   if (has('[data-social-share]'))                  initSocialShare(nextPage);
