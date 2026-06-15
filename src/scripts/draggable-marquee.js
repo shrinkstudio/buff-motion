@@ -109,6 +109,10 @@ function buildMarquee(group) {
   };
   applyTimeScale();
   if (autoplay && baseDirection < 0) loop.progress(1); // start reverse from the looped phase, no jump
+  // Static mode: genuinely PAUSE the loop. timeScale(0) alone doesn't reliably
+  // freeze an infinite repeating tween, so we pause it outright — a paused
+  // tween cannot advance. It's only played during a drag (below).
+  if (!autoplay) loop.pause();
 
   // Drag → momentum. Observer is optional: without it the strip still drifts,
   // it just isn't grabbable.
@@ -125,12 +129,16 @@ function buildMarquee(group) {
       lockAxis: true,
       tolerance: 10,
       onChangeX: (e) => {
+        if (!autoplay) loop.play(); // resume so the drag + coast can advance the playhead
         let v = gsap.utils.clamp(-multiplier, multiplier, e.velocityX * -sensitivity);
         gsap.killTweensOf(timeScale);
         // autoplay: settle back to a ±1 drift in the flung direction.
         // static: settle back to 0 (comes to rest after the fling).
         const resting = autoplay ? (v < 0 ? -1 : 1) : 0;
-        gsap.timeline({ onUpdate: applyTimeScale })
+        gsap.timeline({
+          onUpdate: applyTimeScale,
+          onComplete: () => { if (!autoplay) loop.pause(); }, // freeze again once it has settled
+        })
           .to(timeScale, { value: v, duration: 0.1, overwrite: true })
           .to(timeScale, { value: resting, duration: 1.0 });
       },
@@ -144,8 +152,8 @@ function buildMarquee(group) {
       trigger: group,
       start: "top bottom",
       end: "bottom top",
-      onEnter: () => { loop.resume(); applyTimeScale(); observer && observer.enable(); },
-      onEnterBack: () => { loop.resume(); applyTimeScale(); observer && observer.enable(); },
+      onEnter: () => { if (autoplay) loop.resume(); applyTimeScale(); observer && observer.enable(); },
+      onEnterBack: () => { if (autoplay) loop.resume(); applyTimeScale(); observer && observer.enable(); },
       onLeave: () => { loop.pause(); observer && observer.disable(); },
       onLeaveBack: () => { loop.pause(); observer && observer.disable(); },
     });
