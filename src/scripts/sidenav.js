@@ -87,7 +87,9 @@ function resetSidenavState() {
     arrowLottie.goToAndStop(closed, true);
   }
   if (bgLottie && typeof bgLottie.goToAndStop === "function") {
-    bgLottie.goToAndStop(0, true);
+    // Mobile keeps the squiggle static-drawn (last frame); desktop resets to 0.
+    const mobileStatic = window.matchMedia("(max-width: 767px)").matches;
+    bgLottie.goToAndStop(mobileStatic ? bgLottie.totalFrames : 0, true);
   }
 }
 
@@ -156,11 +158,21 @@ export function initSidenav(scope) {
     arrowLottie.addEventListener("DOMLoaded", () => arrowLottie.goToAndStop(closedFrame, true));
   }
 
-  // Background Lottie inside the menu — held at frame 0 until menu opens
+  // Mobile: the bg squiggle Lottie is the heaviest per-frame render in the nav
+  // (animated SVG path drawing). On mobile we make it STATIC — show it fully
+  // drawn at its last frame but never run the per-frame draw-on. Takes weight
+  // out of the menu open/close and reduces jank on lower-spec mobile CPUs.
+  // Checked live (not cached) so a desktop→mobile resize is honoured.
+  const bgLottieStatic = () => window.matchMedia("(max-width: 767px)").matches;
+
+  // Background Lottie inside the menu — desktop: held at frame 0 until the menu
+  // opens (then draws on). Mobile: snapped to the last frame (fully drawn, static).
   const bgLottieEl = document.querySelector("[data-nav-lottie-bg]");
   bgLottie = loadNavLottie(bgLottieEl);
   if (bgLottie) {
-    bgLottie.addEventListener("DOMLoaded", () => bgLottie.goToAndStop(0, true));
+    bgLottie.addEventListener("DOMLoaded", () => {
+      bgLottie.goToAndStop(bgLottieStatic() ? bgLottie.totalFrames : 0, true);
+    });
   }
 
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -201,7 +213,16 @@ export function initSidenav(scope) {
       // Deferring by 100ms separates the SVG render cost from the link/fade
       // stagger that kicks in at 0.55s — stops the t=0.5s GPU/CPU spike where
       // panels finish + bg Lottie starts + links begin all happen in one frame.
-      .call(() => { if (bgLottie) bgLottie.goToAndPlay(0, true); }, null, 0.6)
+      // Mobile: bg squiggle is static (already drawn at last frame) — skip the
+      // play entirely so there's no per-frame render during the open.
+      .call(() => {
+        if (!bgLottie) return;
+        if (bgLottieStatic()) {
+          bgLottie.goToAndStop(bgLottie.totalFrames, true);
+        } else {
+          bgLottie.goToAndPlay(0, true);
+        }
+      }, null, 0.6)
       // Phase 3 (~0.55s onwards): items animate in on top of the drawing squiggle.
       // Stagger reduced (0.08→0.05) — same visual feel, finishes ~0.2s sooner so
       // the whole open animation completes in a tighter window.
@@ -259,7 +280,10 @@ export function initSidenav(scope) {
       //      causing the "glitchy" snap into the open animation. clearProps
       //      wipes the slate.
       .call(() => {
-        if (bgLottie) bgLottie.goToAndStop(0, true);
+        if (!bgLottie) return;
+        // Mobile: keep it parked at the last frame (static-drawn) ready for the
+        // next open. Desktop: reset to frame 0 so the next open draws on fresh.
+        bgLottie.goToAndStop(bgLottieStatic() ? bgLottie.totalFrames : 0, true);
       })
       .set([menuLinks, fadeTargets], { clearProps: "all" });
 
