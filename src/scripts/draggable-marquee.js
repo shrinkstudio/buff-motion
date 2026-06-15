@@ -15,7 +15,8 @@
 //     › direct children       — the slides (.parallax-slider__item)
 //
 // Optional config attributes on [data-parallax-init] (all default sensibly):
-//   data-marquee-duration     — seconds for one full content-length pass (default 30)
+//   data-marquee-autoplay     — "false" → static until dragged (default drifts)
+//   data-marquee-duration     — seconds for one full content-length pass (default 360)
 //   data-direction            — "left" (default) or "right" — initial drift
 //   data-marquee-sensitivity  — drag velocity → timeScale factor (default 0.01)
 //   data-marquee-multiplier   — max timeScale a fling can reach (default 40)
@@ -54,6 +55,12 @@ function buildMarquee(group) {
   const multiplier = num(group, "data-marquee-multiplier", 40);
   const directionAttr = (group.getAttribute("data-direction") || "left").toLowerCase();
   const baseDirection = directionAttr === "right" ? -1 : 1;
+
+  // autoplay=false → the strip sits STILL until dragged (no constant drift),
+  // but keeps the clone-to-fill (no gap) and the grab/fling momentum. At rest
+  // the loop's timeScale is 0 (frozen); a fling spikes it then settles back
+  // to 0 instead of resuming a drift.
+  const autoplay = (group.getAttribute("data-marquee-autoplay") || "true").toLowerCase() !== "false";
 
   // The viewport (.parallax-slider__list) is already 100vw + overflow:hidden in
   // the Webflow CSS — perfect full-bleed clip. We add an inner TRACK that holds
@@ -95,13 +102,13 @@ function buildMarquee(group) {
     modifiers: { x: (x) => wrapX(parseFloat(x)) + "px" },
   });
 
-  const timeScale = { value: baseDirection };
+  const timeScale = { value: autoplay ? baseDirection : 0 };
   const applyTimeScale = () => {
     loop.timeScale(timeScale.value);
     group.setAttribute("data-direction", timeScale.value < 0 ? "right" : "left");
   };
   applyTimeScale();
-  if (baseDirection < 0) loop.progress(1); // start reverse from the looped phase, no jump
+  if (autoplay && baseDirection < 0) loop.progress(1); // start reverse from the looped phase, no jump
 
   // Drag → momentum. Observer is optional: without it the strip still drifts,
   // it just isn't grabbable.
@@ -120,7 +127,9 @@ function buildMarquee(group) {
       onChangeX: (e) => {
         let v = gsap.utils.clamp(-multiplier, multiplier, e.velocityX * -sensitivity);
         gsap.killTweensOf(timeScale);
-        const resting = v < 0 ? -1 : 1; // fling sets the ongoing drift direction
+        // autoplay: settle back to a ±1 drift in the flung direction.
+        // static: settle back to 0 (comes to rest after the fling).
+        const resting = autoplay ? (v < 0 ? -1 : 1) : 0;
         gsap.timeline({ onUpdate: applyTimeScale })
           .to(timeScale, { value: v, duration: 0.1, overwrite: true })
           .to(timeScale, { value: resting, duration: 1.0 });
