@@ -47,7 +47,9 @@ function buildMarquee(group) {
   );
   if (!originalItems.length) return null;
 
-  const duration = num(group, "data-marquee-duration", 30);
+  // Default 360s for one full content-length pass — a slow, stately drift
+  // (client direction). Still overridable per-instance via data-marquee-duration.
+  const duration = num(group, "data-marquee-duration", 360);
   const sensitivity = num(group, "data-marquee-sensitivity", 0.01);
   const multiplier = num(group, "data-marquee-multiplier", 40);
   const directionAttr = (group.getAttribute("data-direction") || "left").toLowerCase();
