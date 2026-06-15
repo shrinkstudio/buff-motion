@@ -339,14 +339,17 @@ function runPageLeaveAnimation(current, next) {
     duration: 1,
   }, "<");
 
-  // Squiggle's in-half — kicks at 0.2s into the leave so the panel gets a
-  // brief solo anticipation beat, then the squiggle joins and lands midpoint
-  // at 1s (panel cover). Wrapped in an arrow function so lottieRange is read
-  // at PLAYBACK time, not build time — first-click safety in case the
-  // Lottie's DOMLoaded hasn't fired by the time the user clicks.
+  // V1 "swipe → lottie → swipe" cadence. The squiggle stays at its start frame
+  // while the panel sweeps up (riding up, counter-translated to stay centred),
+  // then the FULL squiggle plays at t=1.0 — the exact moment the panel fully
+  // covers the screen. That gives it a clear, dedicated beat against the STILL
+  // panel instead of being rushed through the motion (the client's complaint:
+  // "you barely see the lottie in the middle"). The enter sweep waits for it
+  // (startEnter pushed to 2.2s in runPageEnterAnimation). Arrow-wrapped so
+  // lottieRange resolves at playback time (first-click safety).
   tl.call(() => {
-    playLottieSegment(lottieRange?.ip, lottieRange?.half, 0.8);
-  }, null, 0.2);
+    playLottieSegment(lottieRange?.ip, lottieRange?.op, 1.1);
+  }, null, 1.0);
 
   // Current page slides up as it gets covered
   tl.fromTo(current, {
@@ -381,9 +384,12 @@ function runPageEnterAnimation(next) {
     return new Promise(resolve => tl.call(resolve, null, "pageReady"));
   }
 
-  // Wait for the leave's 1s panel-cover to fully complete + 0.35s "dwell"
-  // before starting the reveal. Matches Forest's smooth pattern.
-  tl.add("startEnter", 1.35);
+  // Wait for the leave's 1s panel-cover AND the full squiggle beat (~1.1s,
+  // played at t=1.0 in runPageLeaveAnimation) to finish against the still
+  // panel before revealing. This is the "lottie" in swipe → lottie → swipe —
+  // the squiggle now gets its own clearly-visible moment. 1.0 cover + 1.1
+  // lottie + 0.1 buffer = 2.2s.
+  tl.add("startEnter", 2.2);
 
   // Show new page
   tl.set(next, {
@@ -410,13 +416,9 @@ function runPageEnterAnimation(next) {
     immediateRender: false
   }, "startEnter");
 
-  // Squiggle's out-half kicks at startEnter — picks up from midpoint where
-  // the in-half left off, stretched to fill the full 1s of panel exit so the
-  // final frame lands exactly with the panel done. Arrow-wrapped for the
-  // same playback-time read as the in-half above.
-  tl.call(() => {
-    playLottieSegment(lottieRange?.half, lottieRange?.op, 1.0);
-  }, null, "startEnter");
+  // (No lottie call here anymore — the FULL squiggle already played during the
+  // still dwell in runPageLeaveAnimation. By startEnter it's finished on its
+  // last frame and rides up/out with the panel.)
 
   // Bottom curve scales out — rounded trailing edge
   tl.fromTo(transitionPanelBottom, {
