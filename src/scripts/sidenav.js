@@ -88,7 +88,7 @@ function resetSidenavState() {
   }
   if (bgLottie && typeof bgLottie.goToAndStop === "function") {
     // Mobile keeps the squiggle static-drawn (last frame); desktop resets to 0.
-    const mobileStatic = window.matchMedia("(max-width: 767px)").matches;
+    const mobileStatic = window.matchMedia("(max-width: 991px)").matches;
     bgLottie.goToAndStop(mobileStatic ? bgLottie.totalFrames : 0, true);
   }
 }
@@ -163,7 +163,7 @@ export function initSidenav(scope) {
   // drawn at its last frame but never run the per-frame draw-on. Takes weight
   // out of the menu open/close and reduces jank on lower-spec mobile CPUs.
   // Checked live (not cached) so a desktop→mobile resize is honoured.
-  const bgLottieStatic = () => window.matchMedia("(max-width: 767px)").matches;
+  const bgLottieStatic = () => window.matchMedia("(max-width: 991px)").matches;
 
   // Background Lottie inside the menu — desktop: held at frame 0 until the menu
   // opens (then draws on). Mobile: snapped to the last frame (fully drawn, static).
