@@ -307,8 +307,19 @@ function runPageLeaveAnimation(current, next) {
     height: "8vw"
   }, 0);
 
+  // Dead-centre the squiggle on the panel. Its CSS is `position:absolute` with
+  // no offsets, which (a) opts it out of the panel's flex centring so it sat
+  // top-left, and (b) made the old yPercent counter-translate shove it low —
+  // the client's "comes in half way / low on page" bug. top/left 50% +
+  // xPercent/yPercent -50 centres it; it then simply rides up WITH the panel
+  // (it's a child) and lands at screen centre when the panel covers. No
+  // counter-translate needed — that's removed below.
   tl.set(transitionLottieEl, {
-    autoAlpha: 1
+    autoAlpha: 1,
+    top: "50%",
+    left: "50%",
+    xPercent: -50,
+    yPercent: -50
   }, 0);
 
   tl.set(next, {
@@ -320,14 +331,6 @@ function runPageLeaveAnimation(current, next) {
     yPercent: 0
   }, {
     yPercent: -100,
-    duration: 1,
-  }, 0);
-
-  // Counter-animate lottie so it stays fixed on screen
-  tl.fromTo(transitionLottieEl, {
-    yPercent: 0
-  }, {
-    yPercent: 100,
     duration: 1,
   }, 0);
 
@@ -406,15 +409,10 @@ function runPageEnterAnimation(next) {
     immediateRender: false
   }, "startEnter");
 
-  // Counter-animate lottie to stay fixed while panel exits
-  tl.fromTo(transitionLottieEl, {
-    yPercent: 100,
-  }, {
-    yPercent: 200,
-    duration: 1,
-    overwrite: "auto",
-    immediateRender: false
-  }, "startEnter");
+  // (No lottie counter-translate anymore — it's dead-centred via top/left 50%
+  // + xPercent/yPercent -50 in runPageLeaveAnimation and simply rides up and
+  // out WITH the panel, which is its parent. The squiggle has already finished
+  // playing during the dwell by the time the enter sweep starts.)
 
   // (No lottie call here anymore — the FULL squiggle already played during the
   // still dwell in runPageLeaveAnimation. By startEnter it's finished on its
