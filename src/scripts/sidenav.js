@@ -113,6 +113,19 @@ export function initSidenav(scope) {
   navWrap = scope.querySelector("[data-sidenav-wrap]") || document.querySelector("[data-sidenav-wrap]");
   if (!navWrap) return;
 
+  // Idempotency guard — remove any handlers a PREVIOUS init left bound before
+  // binding fresh. On first page load Barba fires initSidenav from BOTH the
+  // `once` hook and `afterEnter`, so without this every toggle element ends up
+  // with two click listeners and a single click runs toggle() twice
+  // (open → close → open). That's the "click to close just reopens it" bug.
+  // Cheap no-op when there's nothing bound yet.
+  toggleHandlers.forEach(({ el, handler }) => el.removeEventListener("click", handler));
+  toggleHandlers = [];
+  if (keyHandler) {
+    document.removeEventListener("keydown", keyHandler);
+    keyHandler = null;
+  }
+
   // Force a clean closed baseline before binding handlers. If the user
   // navigated mid-open, the DOM still carries stale GSAP transforms from
   // the killed open timeline — wiping them here means the first click on
