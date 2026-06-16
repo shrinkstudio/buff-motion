@@ -148,24 +148,37 @@ export function initSidenav(scope) {
 
   // Load arrow Lottie + hold at the configured "closed" frame.
   //
-  // Defaults are tuned for buff_menu_arrow_black.json (0–90 frames @ 30fps):
-  //   30 — arrow straight + centred (rotation 0°, position (0,0))
-  //   60 — X / close icon, held during the file's rotation-peak hold (rot −45°)
+  // Tuned for buff_menu_arrow_black.json (0–90 frames @ 30fps). The file is a
+  // FORWARD LOOP: straight ↗ (frames 26–32) → wind-up slide-right (32–47) →
+  // rotate into the X (47–60) → hold X (60–65) → rotate back to straight
+  // (65–85) → straight ↗ (85–90). Frames 30 and 90 are byte-identical poses
+  // (rot 0°, pos 0,0), which is what makes the silent end-of-close reset
+  // invisible.
   //
-  // Close plays the segment in REVERSE (60 → 30) — the X unwinds back to the
-  // straight arrow rather than continuing forward through the file's natural
-  // curve and snapping back. lottie-web's playSegments treats end<start as a
-  // reverse-direction segment, so this is just a parameter swap, not a setDirection.
+  //   30 — straight ↗ at rest (closed)
+  //   60 — X / close icon (open)
+  //   90 — straight ↗ again (close-end; identical to 30)
+  //
+  // Open  plays 30 → 60 (forward): the arrow winds up and throws into the X.
+  // Close plays 60 → 90 (FORWARD): pure rotation back to straight, NO sideways
+  // kick. Playing 60 → 30 in reverse (the old approach) ran the wind-up
+  // backwards, sliding the arrow right as it closed — that was the "snap"
+  // the client flagged. After the forward close completes we goToAndStop(30)
+  // to re-arm for the next open; invisible because 90 ≡ 30.
   //
   // Override per-element on the Lottie element via:
   //   [data-lottie-frame="N"]            — closed/resting frame (default 30)
   //   [data-lottie-open-frame="N"]       — open/active frame (default 60)
+  //   [data-lottie-close-end-frame="N"]  — forward close-end (default 90 / file end)
   const closedFrame = arrowLottieEl
     ? parseInt(arrowLottieEl.getAttribute("data-lottie-frame") || "30", 10)
     : 30;
   const openFrame = arrowLottieEl
     ? parseInt(arrowLottieEl.getAttribute("data-lottie-open-frame") || "60", 10)
     : 60;
+  const closeEndFrame = arrowLottieEl
+    ? parseInt(arrowLottieEl.getAttribute("data-lottie-close-end-frame") || "90", 10)
+    : 90;
   arrowLottie = loadNavLottie(arrowLottieEl);
   if (arrowLottie) {
     arrowLottie.addEventListener("DOMLoaded", () => arrowLottie.goToAndStop(closedFrame, true));
@@ -300,17 +313,25 @@ export function initSidenav(scope) {
       })
       .set([menuLinks, fadeTargets], { clearProps: "all" });
 
-    // Arrow Lottie: play current frame → closedFrame in REVERSE. lottie-web's
-    // playSegments treats end<start as a reverse-direction segment, so the X
-    // literally unwinds back to the straight arrow — no further-forward
-    // excursion, no goToAndStop snap, no stranded onComplete event handler.
-    // Previous version was 60 → 85 → snap-to-30 which read as "the X spins
-    // forward, hits an end, then snaps back" — exactly the "comes back after
-    // going forward" beat the client flagged.
+    // Arrow Lottie: play current frame → closeEndFrame FORWARD (X → straight),
+    // then silently re-arm to closedFrame on completion. Forward is the file's
+    // intended direction: it's a pure rotation back to the straight arrow with
+    // NO sideways slide. Reversing (60 → 30) ran the file's wind-up backwards,
+    // kicking the arrow sideways as it closed — that was the "snap" the client
+    // flagged. The goToAndStop(closedFrame) reset is invisible because the
+    // close-end pose (90) is byte-identical to the closed pose (30).
     if (arrowLottie) {
       tl.call(() => {
-        arrowLottie.playSegments([arrowLottie.currentFrame, closedFrame], true);
+        arrowLottie.playSegments([arrowLottie.currentFrame, closeEndFrame], true);
       }, null, 0);
+      // Re-arm to the closed pose AFTER the forward close (60→90 ≈ 1.0s @ 30fps)
+      // has finished. Scheduled on the close TIMELINE rather than the lottie
+      // 'complete' event so that if the user re-opens mid-close, buildTimeline()'s
+      // tl.kill() cancels this reset — otherwise a lingering complete handler
+      // could snap the arrow to 30 while it's actually heading back to the X.
+      tl.call(() => {
+        arrowLottie.goToAndStop(closedFrame, true);
+      }, null, 1.1);
     } else if (menuButtonIcon) {
       tl.to(menuButtonIcon, { rotate: 0 }, 0);
     }
