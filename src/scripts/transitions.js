@@ -307,19 +307,13 @@ function runPageLeaveAnimation(current, next) {
     height: "8vw"
   }, 0);
 
-  // Dead-centre the squiggle on the panel. Its CSS is `position:absolute` with
-  // no offsets, which (a) opts it out of the panel's flex centring so it sat
-  // top-left, and (b) made the old yPercent counter-translate shove it low —
-  // the client's "comes in half way / low on page" bug. top/left 50% +
-  // xPercent/yPercent -50 centres it; it then simply rides up WITH the panel
-  // (it's a child) and lands at screen centre when the panel covers. No
-  // counter-translate needed — that's removed below.
+  // Squiggle centring is handled in Webflow CSS (the panel is display:flex
+  // justify/align center — the squiggle just needs to be a flex item, i.e.
+  // position:static/relative rather than absolute). The bundle only owns
+  // behaviour here: show it, then it rides up WITH the panel (its parent) and
+  // lands centred when the panel covers. No counter-translate — removed below.
   tl.set(transitionLottieEl, {
-    autoAlpha: 1,
-    top: "50%",
-    left: "50%",
-    xPercent: -50,
-    yPercent: -50
+    autoAlpha: 1
   }, 0);
 
   tl.set(next, {
