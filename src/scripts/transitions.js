@@ -336,17 +336,16 @@ function runPageLeaveAnimation(current, next) {
     duration: 1,
   }, "<");
 
-  // V1 "swipe → lottie → swipe" cadence. The squiggle stays at its start frame
-  // while the panel sweeps up (riding up, counter-translated to stay centred),
-  // then the FULL squiggle plays at t=1.0 — the exact moment the panel fully
-  // covers the screen. That gives it a clear, dedicated beat against the STILL
-  // panel instead of being rushed through the motion (the client's complaint:
-  // "you barely see the lottie in the middle"). The enter sweep waits for it
-  // (startEnter pushed to 2.2s in runPageEnterAnimation). Arrow-wrapped so
-  // lottieRange resolves at playback time (first-click safety).
+  // "swipe → lottie → swipe", but CONNECTED: the squiggle kicks at t=0.8 —
+  // just before the cover sweep fully lands (the centre's already covered by
+  // ~0.8) — so it flows out of the cover instead of waiting for a beat. Comes
+  // in a touch earlier (client: "a tad earlier") and reads as one continuous
+  // motion. Plays the full uncropped file (ip→op, draw-on THEN off) over 1.1s,
+  // finishing at 1.9s exactly as the reveal sweep begins (startEnter=1.9 in
+  // runPageEnterAnimation) — no dead gap between lottie and reveal.
   tl.call(() => {
     playLottieSegment(lottieRange?.ip, lottieRange?.op, 1.1);
-  }, null, 1.0);
+  }, null, 0.8);
 
   // Current page slides up as it gets covered
   tl.fromTo(current, {
@@ -381,12 +380,12 @@ function runPageEnterAnimation(next) {
     return new Promise(resolve => tl.call(resolve, null, "pageReady"));
   }
 
-  // Wait for the leave's 1s panel-cover AND the full squiggle beat (~1.1s,
-  // played at t=1.0 in runPageLeaveAnimation) to finish against the still
-  // panel before revealing. This is the "lottie" in swipe → lottie → swipe —
-  // the squiggle now gets its own clearly-visible moment. 1.0 cover + 1.1
-  // lottie + 0.1 buffer = 2.2s.
-  tl.add("startEnter", 2.2);
+  // Reveal picks up the INSTANT the squiggle finishes — no dead gap, so the
+  // whole thing reads as one connected motion (client: "needs to be a little
+  // more connected"). Squiggle starts at 0.8 + plays 1.1s = ends 1.9, so the
+  // reveal sweep begins at 1.9. (Down from 2.2; the cover→lottie overlap and
+  // this seamless lottie→reveal handoff are what tie the three beats together.)
+  tl.add("startEnter", 1.9);
 
   // Show new page
   tl.set(next, {
