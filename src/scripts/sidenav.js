@@ -82,8 +82,8 @@ function resetSidenavState() {
   if (arrowLottie && typeof arrowLottie.goToAndStop === "function") {
     const arrowEl = document.querySelector("[data-nav-lottie-arrow]");
     const closed = arrowEl
-      ? parseInt(arrowEl.getAttribute("data-lottie-frame") || "30", 10)
-      : 30;
+      ? parseInt(arrowEl.getAttribute("data-lottie-frame") || "85", 10)
+      : 85;
     arrowLottie.goToAndStop(closed, true);
   }
   if (bgLottie && typeof bgLottie.goToAndStop === "function") {
@@ -148,37 +148,38 @@ export function initSidenav(scope) {
 
   // Load arrow Lottie + hold at the configured "closed" frame.
   //
-  // Tuned for buff_menu_arrow_black.json (0–90 frames @ 30fps). The file is a
-  // FORWARD LOOP: straight ↗ (frames 26–32) → wind-up slide-right (32–47) →
-  // rotate into the X (47–60) → hold X (60–65) → rotate back to straight
-  // (65–85) → straight ↗ (85–90). Frames 30 and 90 are byte-identical poses
-  // (rot 0°, pos 0,0), which is what makes the silent end-of-close reset
-  // invisible.
+  // buff_menu_arrow_black.json (0–90 @ 30fps) frame map:
+  //   26–32  straight ↗   (rot 0°, pos 0,0)
+  //   32–47  WIND-UP — the arrow slides sideways (~140u) and back. This is the
+  //          baked-in "snap" the client kept feeling.
+  //   47–60  rotate into the X
+  //   60–65  hold X
+  //   65–85  rotate back to straight (small ±4–5° overshoot)
+  //   85–90  straight ↗ again (rot 0°, pos 0,0 — identical pose to 30)
   //
-  //   30 — straight ↗ at rest (closed)
+  // KEY: frames 47–90 have ZERO positional movement — pure rotation. So we rest
+  // at 85 (the post-rotation straight pose) and toggle between 60 ↔ 85, which
+  // stays entirely inside the no-slide zone. The wind-up (32–47) never plays in
+  // either direction, so there's no sideways kick.
+  //   85 — straight ↗ at rest (closed)   ← was 30, which sat just BEFORE the wind-up
   //   60 — X / close icon (open)
-  //   90 — straight ↗ again (close-end; identical to 30)
   //
-  // Open  plays 30 → 60 (forward): the arrow winds up and throws into the X.
-  // Close plays 60 → 90 (FORWARD): pure rotation back to straight, NO sideways
-  // kick. Playing 60 → 30 in reverse (the old approach) ran the wind-up
-  // backwards, sliding the arrow right as it closed — that was the "snap"
-  // the client flagged. After the forward close completes we goToAndStop(30)
-  // to re-arm for the next open; invisible because 90 ≡ 30.
+  // Open  plays 85 → 60 (rotate to X, no slide). Close plays 60 → 85 (rotate
+  // back, no slide) and ENDS at the rest frame, so no re-arm/reset is needed.
   //
-  // Override per-element on the Lottie element via:
-  //   [data-lottie-frame="N"]            — closed/resting frame (default 30)
-  //   [data-lottie-open-frame="N"]       — open/active frame (default 60)
-  //   [data-lottie-close-end-frame="N"]  — forward close-end (default 90 / file end)
+  // NOTE: a small ±4–5° rotation overshoot is still baked into 65–85; no
+  // playback removes it — only a clean re-export of the Lottie would. The
+  // big sideways snap, however, is gone.
+  //
+  // Override per-element via:
+  //   [data-lottie-frame="N"]       — closed/resting frame (default 85)
+  //   [data-lottie-open-frame="N"]  — open/active frame (default 60)
   const closedFrame = arrowLottieEl
-    ? parseInt(arrowLottieEl.getAttribute("data-lottie-frame") || "30", 10)
-    : 30;
+    ? parseInt(arrowLottieEl.getAttribute("data-lottie-frame") || "85", 10)
+    : 85;
   const openFrame = arrowLottieEl
     ? parseInt(arrowLottieEl.getAttribute("data-lottie-open-frame") || "60", 10)
     : 60;
-  const closeEndFrame = arrowLottieEl
-    ? parseInt(arrowLottieEl.getAttribute("data-lottie-close-end-frame") || "90", 10)
-    : 90;
   arrowLottie = loadNavLottie(arrowLottieEl);
   if (arrowLottie) {
     arrowLottie.addEventListener("DOMLoaded", () => arrowLottie.goToAndStop(closedFrame, true));
@@ -313,25 +314,16 @@ export function initSidenav(scope) {
       })
       .set([menuLinks, fadeTargets], { clearProps: "all" });
 
-    // Arrow Lottie: play current frame → closeEndFrame FORWARD (X → straight),
-    // then silently re-arm to closedFrame on completion. Forward is the file's
-    // intended direction: it's a pure rotation back to the straight arrow with
-    // NO sideways slide. Reversing (60 → 30) ran the file's wind-up backwards,
-    // kicking the arrow sideways as it closed — that was the "snap" the client
-    // flagged. The goToAndStop(closedFrame) reset is invisible because the
-    // close-end pose (90) is byte-identical to the closed pose (30).
+    // Arrow Lottie: play current frame → closedFrame (60 → 85), i.e. X rotating
+    // back to the straight arrow. This stays inside the no-slide zone (47–90),
+    // so there's no sideways kick, and it ENDS exactly on the rest frame (85) —
+    // no re-arm/reset needed (the old approach played to 90 then snapped back
+    // to 30, and earlier still it reversed through the wind-up — both were the
+    // "snap"). playSegments from currentFrame handles a mid-open interruption.
     if (arrowLottie) {
       tl.call(() => {
-        arrowLottie.playSegments([arrowLottie.currentFrame, closeEndFrame], true);
+        arrowLottie.playSegments([arrowLottie.currentFrame, closedFrame], true);
       }, null, 0);
-      // Re-arm to the closed pose AFTER the forward close (60→90 ≈ 1.0s @ 30fps)
-      // has finished. Scheduled on the close TIMELINE rather than the lottie
-      // 'complete' event so that if the user re-opens mid-close, buildTimeline()'s
-      // tl.kill() cancels this reset — otherwise a lingering complete handler
-      // could snap the arrow to 30 while it's actually heading back to the X.
-      tl.call(() => {
-        arrowLottie.goToAndStop(closedFrame, true);
-      }, null, 1.1);
     } else if (menuButtonIcon) {
       tl.to(menuButtonIcon, { rotate: 0 }, 0);
     }
