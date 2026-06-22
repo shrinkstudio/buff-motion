@@ -250,12 +250,13 @@ export function initSidenav(scope) {
           bgLottie.goToAndPlay(0, true);
         }
       }, null, 0.6)
-      // Phase 3 (~0.55s onwards): items animate in on top of the drawing squiggle.
-      // Stagger reduced (0.08→0.05) — same visual feel, finishes ~0.2s sooner so
-      // the whole open animation completes in a tighter window.
+      // Phase 3 (~0.55s onwards): links SNAP on at full opacity — no mask, no
+      // fade (client: the OG didn't reveal them from behind a mask). Opacity
+      // snaps per link (duration ~0, staggered); deliberately NO y-translate, so
+      // nothing slides up through an overflow:hidden wrapper to read as a mask.
       .fromTo(menuLinks,
-        { yPercent: 120, autoAlpha: 0 },
-        { yPercent: 0, autoAlpha: 1, stagger: 0.05, duration: 0.9 },
+        { autoAlpha: 0 },
+        { autoAlpha: 1, duration: 0.001, stagger: 0.06 },
         0.55)
       .fromTo(fadeTargets,
         { autoAlpha: 0, yPercent: 30 },
@@ -287,10 +288,15 @@ export function initSidenav(scope) {
     tl
       // Inner content drops out fast so nothing trails as the menu slides
       .to([menuLinks, fadeTargets], { autoAlpha: 0, duration: 0.25 }, 0)
-      // Whole menu container slides off — carries panels, bg Lottie, everything
-      .to(menu, { xPercent: 120, duration: 0.7 }, 0.05)
+      // Whole menu container slides off — carries panels, bg Lottie, everything.
+      // EASE: deliberately NOT the global "buff" default. buff is now the intro
+      // curve (aggressive ease-out — ~85% of travel in the first instant), which
+      // on a full-panel slide-off lurches then lingers — the "quick/glitchy"
+      // minimise the client flagged. power2.inOut accelerates + decelerates
+      // smoothly so it reads as a graceful minimise. (Item motion still uses buff.)
+      .to(menu, { xPercent: 120, duration: 0.8, ease: "power2.inOut" }, 0.05)
       // Overlay fades + button label resets alongside the slide
-      .to(overlay, { autoAlpha: 0, duration: 0.5 }, 0.1)
+      .to(overlay, { autoAlpha: 0, duration: 0.55 }, 0.1)
       .to(menuButtonTexts, { yPercent: 0, duration: 0.45 }, 0.05)
       // Hide wrap once it's all cleared, then reset panels off-screen ready for the next open's wipe-in
       .set(navWrap, { display: "none" })
