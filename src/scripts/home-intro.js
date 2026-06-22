@@ -1,6 +1,6 @@
 // -----------------------------------------
 // HOME INTRO — first-page-load preloader animation
-// Three-word headline rises + fades in (Hey, we're Buff), Lottie flourish
+// Three-word headline snaps on + swipes up (Hey, we're Buff), Lottie flourish
 // draws underneath "Buff", panel slides up off-screen, hero video plays.
 // Fires from the Barba `once` hook only — never re-plays on SPA transitions.
 // -----------------------------------------
@@ -14,11 +14,11 @@
 //   [data-lottie-frame]            — initial hold frame (default 0)
 //   [data-lottie-end-frame]        — last frame to play to (default = Lottie's totalFrames)
 //
-// Cadence (V1 buffmotion.com rhythm, slowed slightly per client feedback):
-//   0.20s — "Hey," rises (y:15 → 0, autoAlpha 0 → 1, 0.75s, buff ease)
-//   0.52s — "we're" rises (0.32s stagger)
-//   0.84s — "Buff" rises (0.32s stagger)
-//   1.15s — Squiggle Lottie plays its draw-on
+// Cadence (V2 — client easing pass: opacity snaps, words swipe up quicker):
+//   0.20s — "Hey," snaps on + swipes up (y:15 → 0, 0.5s, buff ease)
+//   0.30s — "we're" snaps + swipes (0.10s stagger)
+//   0.40s — "Buff" snaps + swipes (0.10s stagger)
+//   0.70s — Squiggle Lottie plays its draw-on
 //   2.50s — Panel slides up off-screen (1.0s) + page content rises
 //   3.50s — Done, hero video plays
 //   (Mobile: intro skipped entirely — see the mobile branch in initHomeIntro)
@@ -181,26 +181,32 @@ export function initHomeIntro(scope) {
     return;
   }
 
-  // Phase 1: panel visible, items start hidden + nudged down 15px (V1's exact translate value)
+  // Phase 1: panel visible, items start hidden + nudged down 15px (V1's exact translate value).
+  // autoAlpha 0 keeps them invisible until each word snaps on in Phase 2 — never a fade.
   tl.set(root, { autoAlpha: 1, yPercent: 0 });
   tl.set(items, { y: 15, autoAlpha: 0 });
 
-  // Phase 2: words rise + fade in. Slowed per client feedback ("needs to move
-  // a little slower") — duration 0.55 → 0.75, stagger 0.25 → 0.32. The rise
-  // reads as more relaxed without dragging the whole intro out.
-  //   "Hey,"  0.20 → 0.95
-  //   "we're" 0.52 → 1.27
-  //   "Buff"  0.84 → 1.59
-  tl.to(items, { y: 0, autoAlpha: 1, stagger: 0.32, duration: 0.75 }, 0.2);
+  // Phase 2: words snap on at full opacity, then swipe up into place. Per client
+  // feedback the opacity must NOT fade ("snap on at 100% opacity") and the gap
+  // between words must be much shorter ("old motion is much quicker between the
+  // words"). So opacity snaps per word (duration ~0, staggered) while the y swipe
+  // — on the new "buff" curve — carries the visible motion. No mask, no fade.
+  //   stagger 0.32 → 0.10, duration 0.75 → 0.5
+  //   "Hey,"  snaps 0.20, lands 0.70
+  //   "we're" snaps 0.30, lands 0.80
+  //   "Buff"  snaps 0.40, lands 0.90
+  const wordStagger = 0.1;
+  tl.to(items, { autoAlpha: 1, duration: 0.001, stagger: wordStagger }, 0.2);
+  tl.to(items, { y: 0, duration: 0.5, ease: "buff", stagger: wordStagger }, 0.2);
 
-  // Phase 3: squiggle Lottie draws as "Buff" is landing (~45% into its rise —
-  // same relationship as the original cadence, shifted for the slower words).
+  // Phase 3: squiggle Lottie draws as "Buff" is landing (~45% into its swipe).
+  // Pulled in from 1.15 → 0.7 to track the now-quicker word cadence.
   if (lottieAnim) {
     tl.call(() => {
       const endAttr = lottieEl.getAttribute("data-lottie-end-frame");
       const endFrame = endAttr ? parseInt(endAttr, 10) : lottieAnim.totalFrames;
       lottieAnim.playSegments([startFrame, endFrame], true);
-    }, null, 1.15);
+    }, null, 0.7);
   }
 
   // Phase 4: hold for the squiggle (~1.3s draw), then slide the panel up off-screen.

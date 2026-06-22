@@ -51,7 +51,11 @@ const has = (s) => !!nextPage.querySelector(s);
 let staggerDefault = 0.05;
 let durationDefault = 0.6;
 
-CustomEase.create("buff", "M0,0 C1,0.0028 0,1.0005 1,1");
+// "buff" — project ease (client-supplied, cubic-bezier(0, 0.837, 0.2, 0.999)).
+// Smooth fast-out curve that settles without the jolt of the old in-out buff
+// curve. This is the bundle's global default ease (see gsap.defaults below), so
+// it sets the motion character for every tween that doesn't override `ease`.
+CustomEase.create("buff", "M0,0 C0,0.837 0.2,0.999 1,1");
 CustomEase.create("energy", "M0,0 C0.32,0.72 0,1 1,1");
 gsap.defaults({ ease: "buff", duration: durationDefault });
 
