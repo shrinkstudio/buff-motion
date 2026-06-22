@@ -209,6 +209,13 @@ export function initHomeIntro(scope) {
     }, null, 0.7);
   }
 
+  // Phase 4a: word exit finesse (matches buffmotion.com). As the panel sweeps
+  // up, the words fade + scale down together — but the opacity (0.4s) finishes
+  // BEFORE the scale-down (0.7s), so the text dissolves softly via opacity while
+  // it's only slightly shrunk, rather than visibly shrinking to a dot.
+  tl.to(items, { scale: 0.9, duration: 0.7, ease: "buff" }, 2.5);
+  tl.to(items, { autoAlpha: 0, duration: 0.4, ease: "power1.out" }, 2.5);
+
   // Phase 4: hold for the squiggle (~1.3s draw), then slide the panel up off-screen.
   // Duration 1.0s + buff ease matches the page transition's panel sweep
   // (transitions.js → runPageLeaveAnimation) — same curve, same length, so the
