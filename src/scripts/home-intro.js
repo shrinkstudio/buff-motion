@@ -19,8 +19,9 @@
 //   0.30s — "we're" snaps + swipes (0.10s stagger)
 //   0.40s — "Buff" snaps + swipes (0.10s stagger)
 //   0.70s — Squiggle Lottie plays its draw-on
-//   2.50s — Panel slides up off-screen (1.0s) + page content rises
-//   3.50s — Done, hero video plays
+//   2.30s — TEXT OUT: words dissolve in place (fade 0.45s + scale 0.6s)
+//   2.85s — Panel slides up off-screen (0.9s, power2.inOut) + page content rises
+//   3.75s — Done, hero video plays
 //   (Mobile: intro skipped entirely — see the mobile branch in initHomeIntro)
 
 let tl = null;
@@ -209,20 +210,23 @@ export function initHomeIntro(scope) {
     }, null, 0.7);
   }
 
-  // Phase 4a: word exit finesse (matches buffmotion.com). As the panel sweeps
-  // up, the words fade + scale down together — but the opacity (0.4s) finishes
-  // BEFORE the scale-down (0.7s), so the text dissolves softly via opacity while
-  // it's only slightly shrunk, rather than visibly shrinking to a dot.
-  tl.to(items, { scale: 0.9, duration: 0.7, ease: "buff" }, 2.5);
-  tl.to(items, { autoAlpha: 0, duration: 0.4, ease: "power1.out" }, 2.5);
+  // Phase 4a: TEXT OUT — the words dissolve IN PLACE while the panel is still
+  // full-screen and stationary, so the dissolve is actually visible. (Bug it
+  // fixes: the words are children of the panel; when the panel slid on the osmo
+  // "buff" curve — which yanks ~85% off-screen instantly — it dragged the words
+  // off before the fade/scale could ever be seen. That was the "not doing the
+  // text out" + "flashy" exit.) Opacity (0.45s) finishes before the scale-down
+  // (0.6s) so they dissolve softly rather than shrinking to a dot.
+  // NOTE: provisional timing — to be matched frame-for-frame against the old
+  // buffmotion.com preloader-out once the reference recording lands.
+  tl.to(items, { scale: 0.92, duration: 0.6, ease: "power2.out" }, 2.3);
+  tl.to(items, { autoAlpha: 0, duration: 0.45, ease: "power1.out" }, 2.3);
 
-  // Phase 4: hold for the squiggle (~1.3s draw), then slide the panel up off-screen.
-  // Duration 1.0s + buff ease matches the page transition's panel sweep
-  // (transitions.js → runPageLeaveAnimation) — same curve, same length, so the
-  // intro reveal and a subsequent page transition feel like the same motion.
-  // Position shifted 2.3 → 2.5 to preserve the squiggle-to-exit gap (1.35s)
-  // after the slower word cadence.
-  tl.to(root, { yPercent: -100, duration: 1.0, ease: "buff" }, 2.5);
+  // Phase 4: panel slides up to reveal the page — AFTER the words have dissolved.
+  // EASE: power2.inOut, deliberately NOT the global "buff" (now the osmo ease-out
+  // that yanked the panel off instantly — the flashy exit). Smooth accel+decel
+  // reads as a controlled reveal. Starts at 2.85, once the word dissolve is done.
+  tl.to(root, { yPercent: -100, duration: 0.9, ease: "power2.inOut" }, 2.85);
 
   // Phase 5: page content rises from y:7dvh → 0 IN SYNC with the panel exit.
   // Halved from the original 15dvh — at 15dvh the rise was momentarily revealing
@@ -233,8 +237,8 @@ export function initHomeIntro(scope) {
   // still matches — just a shorter travel.
   tl.fromTo(pageContent,
     { y: "7dvh" },
-    { y: 0, duration: 1.0, ease: "buff" },
-    2.5
+    { y: 0, duration: 0.9, ease: "power2.inOut" },
+    2.85
   );
 }
 
