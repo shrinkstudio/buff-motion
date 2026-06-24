@@ -107,12 +107,30 @@ function loadNavLottie(container) {
   });
 }
 
+// NO MASK (major client ask). Each [sidenav__menu-list-item] ships with
+// overflow:hidden from Webflow — that clip is the "mask" the links were revealed
+// from behind. Override it to visible so the snap-on + lift-up reveal is fully
+// unmasked. Injected from the bundle so it's guaranteed regardless of Webflow
+// state. Skipped in the Designer so editing still behaves normally.
+function injectSidenavCSS() {
+  if (typeof document === "undefined") return;
+  if (document.getElementById("sidenav-no-mask")) return;
+  const style = document.createElement("style");
+  style.id = "sidenav-no-mask";
+  style.textContent = `
+    html:not(.wf-design-mode) .sidenav__menu-list-item { overflow: visible !important; }
+  `;
+  document.head.appendChild(style);
+}
+
 export function initSidenav(scope) {
   scope = scope || document;
   // Sidenav often lives in a global header outside the Barba container, so a
   // scope-limited query misses it after navigation. Fall back to document.
   navWrap = scope.querySelector("[data-sidenav-wrap]") || document.querySelector("[data-sidenav-wrap]");
   if (!navWrap) return;
+
+  injectSidenavCSS();
 
   // Idempotency guard — remove any handlers a PREVIOUS init left bound before
   // binding fresh. On first page load Barba fires initSidenav from BOTH the
@@ -191,8 +209,8 @@ export function initSidenav(scope) {
   // A tiny hover nudge advances the resting arrow a few frames (see hover
   // handlers below). Overridable via [data-lottie-hover-frame].
   const hoverFrame = arrowLottieEl
-    ? parseFloat(arrowLottieEl.getAttribute("data-lottie-hover-frame") || String(closedFrame + 4))
-    : closedFrame + 4;
+    ? parseFloat(arrowLottieEl.getAttribute("data-lottie-hover-frame") || String(closedFrame + 1))
+    : closedFrame + 1;
   arrowLottie = loadNavLottie(arrowLottieEl);
   if (arrowLottie) {
     // Drive playback so 31.5 → 63 takes 0.9s. Lottie is 90f @ 30fps; playSegments
@@ -271,25 +289,28 @@ export function initSidenav(scope) {
           bgLottie.goToAndPlay(0, true);
         }
       }, null, 0.6)
-      // Phase 3 (~0.55s onwards): links snap on at full opacity THEN slide up
-      // into place. The link stays fully opaque (no fade) and starts pushed down
-      // 120% — its [sidenav__menu-list-item] wrapper is overflow:hidden, so the
-      // clip hides it below the line and it reveals as it slides up. This is the
-      // crisp slide-up the client asked for ("snap on THEN slide up"), distinct
-      // from the old fade-from-behind-a-mask (the fade was the masky part).
-      .fromTo(menuLinks,
-        { yPercent: 120, autoAlpha: 1 },
-        { yPercent: 0, duration: 0.6, ease: "buff", stagger: 0.06 },
-        0.55)
+      // Phase 3 (~0.55s onwards): links come in ONE AT A TIME — each SNAPS on at
+      // full opacity (no fade) then LIFTS up into place. CRITICAL client ask: NO
+      // MASK. The [sidenav__menu-list-item] overflow:hidden clip is overridden to
+      // visible (see injectSidenavCSS), so the link is fully visible the whole
+      // lift — nothing is revealed from behind a clip. Opacity snaps per link
+      // (duration ~0) while a small y-lift carries the motion; both share the
+      // stagger so each link pops + lifts as a unit.
+      .set(menuLinks, { y: 45, autoAlpha: 0 }, 0)
+      .to(menuLinks, { autoAlpha: 1, duration: 0.001, stagger: 0.08 }, 0.55)
+      .to(menuLinks, { y: 0, duration: 0.5, ease: "buff", stagger: 0.08 }, 0.55)
       .fromTo(fadeTargets,
         { autoAlpha: 0, yPercent: 30 },
         { autoAlpha: 1, yPercent: 0, stagger: 0.025, duration: 0.6 },
         0.8);
 
     // Arrow Lottie plays at t=0 — must react instantly to the click, not delayed.
+    // EXPLICIT absolute frames [closedFrame, openFrame] = 31.5 → 63. Do NOT use
+    // arrowLottie.currentFrame — lottie reports it relative to the active segment,
+    // so it read ~0 and the arrow jumped to the very start before the real move.
     if (arrowLottie) {
       tl.call(() => {
-        arrowLottie.playSegments([arrowLottie.currentFrame, openFrame], true);
+        arrowLottie.playSegments([closedFrame, openFrame], true);
       }, null, 0);
     } else if (menuButtonIcon) {
       tl.fromTo(menuButtonIcon, { rotate: 0 }, { rotate: 315 }, 0);
@@ -343,15 +364,14 @@ export function initSidenav(scope) {
       })
       .set([menuLinks, fadeTargets], { clearProps: "all" });
 
-    // Arrow Lottie: play current frame → closedFrame (60 → 85), i.e. X rotating
-    // back to the straight arrow. This stays inside the no-slide zone (47–90),
-    // so there's no sideways kick, and it ENDS exactly on the rest frame (85) —
-    // no re-arm/reset needed (the old approach played to 90 then snapped back
-    // to 30, and earlier still it reversed through the wind-up — both were the
-    // "snap"). playSegments from currentFrame handles a mid-open interruption.
+    // Arrow Lottie close: client wants it to LITERALLY just go 63 → 31.5. EXPLICIT
+    // absolute frames [openFrame, closedFrame] — playSegments plays them in reverse
+    // (firstFrame > lastFrame). Do NOT use arrowLottie.currentFrame here: it reads
+    // relative to the active segment, so the close was snapping/replaying from the
+    // start rather than cleanly reversing 63 → 31.5.
     if (arrowLottie) {
       tl.call(() => {
-        arrowLottie.playSegments([arrowLottie.currentFrame, closedFrame], true);
+        arrowLottie.playSegments([openFrame, closedFrame], true);
       }, null, 0);
     } else if (menuButtonIcon) {
       tl.to(menuButtonIcon, { rotate: 0 }, 0);
@@ -372,14 +392,17 @@ export function initSidenav(scope) {
   // Tiny hover affordance — when the menu is CLOSED, hovering the button nudges
   // the resting arrow a few frames forward; leaving returns it to rest. Skipped
   // while the menu is open so it never fights the open/close playback.
+  // EXPLICIT absolute frames — totally ignore the start of the Lottie. Hover just
+  // ticks 31.5 → 32.5; leaving ticks 32.5 → 31.5. (currentFrame reads relative to
+  // the segment, which made hover replay from the very start before nudging.)
   if (menuButton && arrowLottie) {
     const onEnter = () => {
       if (navWrap.getAttribute("data-nav-state") === "open") return;
-      arrowLottie.playSegments([arrowLottie.currentFrame, hoverFrame], true);
+      arrowLottie.playSegments([closedFrame, hoverFrame], true);
     };
     const onLeave = () => {
       if (navWrap.getAttribute("data-nav-state") === "open") return;
-      arrowLottie.playSegments([arrowLottie.currentFrame, closedFrame], true);
+      arrowLottie.playSegments([hoverFrame, closedFrame], true);
     };
     menuButton.addEventListener("mouseenter", onEnter);
     menuButton.addEventListener("mouseleave", onLeave);
