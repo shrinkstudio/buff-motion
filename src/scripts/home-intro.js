@@ -19,9 +19,9 @@
 //   0.30s — "we're" snaps + swipes (0.10s stagger)
 //   0.40s — "Buff" snaps + swipes (0.10s stagger)
 //   0.70s — Squiggle Lottie plays its draw-on
-//   2.30s — TEXT OUT: words dissolve in place (fade 0.45s + scale 0.6s)
-//   2.85s — Panel slides up off-screen (0.9s, power2.inOut) + page content rises
-//   3.75s — Done, hero video plays
+//   2.50s — EXIT: panel sweeps up (0.8s, panelOut) carrying the words, which
+//           ride up + slightly fade as one unit; page content rises in sync
+//   3.30s — Done, hero video plays
 //   (Mobile: intro skipped entirely — see the mobile branch in initHomeIntro)
 
 let tl = null;
@@ -210,35 +210,30 @@ export function initHomeIntro(scope) {
     }, null, 0.7);
   }
 
-  // Phase 4a: TEXT OUT — the words dissolve IN PLACE while the panel is still
-  // full-screen and stationary, so the dissolve is actually visible. (Bug it
-  // fixes: the words are children of the panel; when the panel slid on the osmo
-  // "buff" curve — which yanks ~85% off-screen instantly — it dragged the words
-  // off before the fade/scale could ever be seen. That was the "not doing the
-  // text out" + "flashy" exit.) Opacity (0.45s) finishes before the scale-down
-  // (0.6s) so they dissolve softly rather than shrinking to a dot.
-  // NOTE: provisional timing — to be matched frame-for-frame against the old
-  // buffmotion.com preloader-out once the reference recording lands.
-  tl.to(items, { scale: 0.92, duration: 0.6, ease: "power2.out" }, 2.3);
-  tl.to(items, { autoAlpha: 0, duration: 0.45, ease: "power1.out" }, 2.3);
+  // Phase 4: EXIT — no in-place dissolve. The words ride UP with the panel (they
+  // are children of root) and SLIGHTLY fade as ONE cohesive unit — a single fade
+  // tween, NO stagger, so the three words read as one piece moving up with the
+  // swipe rather than separate items "fading into darkness" (client). The panel
+  // sweep carries them off-screen.
+  const exitStart = 2.5;
+  const exitDur = 0.8;
 
-  // Phase 4: panel slides up to reveal the page — AFTER the words have dissolved.
-  // EASE: power2.inOut, deliberately NOT the global "buff" (now the osmo ease-out
-  // that yanked the panel off instantly — the flashy exit). Smooth accel+decel
-  // reads as a controlled reveal. Starts at 2.85, once the word dissolve is done.
-  tl.to(root, { yPercent: -100, duration: 0.9, ease: "power2.inOut" }, 2.85);
+  // Slight, cohesive fade on all words together (panelOut so they stay visible
+  // through most of the rise then fade as they whoosh out).
+  tl.to(items, { autoAlpha: 0, duration: exitDur, ease: "panelOut" }, exitStart);
 
-  // Phase 5: page content rises from y:7dvh → 0 IN SYNC with the panel exit.
-  // Halved from the original 15dvh — at 15dvh the rise was momentarily revealing
-  // the nav bar AND peeking the top of the hero-text section through the bottom
-  // of the viewport (sticky cc-home-hero + translated parent interaction). 7dvh
-  // is enough to read as a "rise into place" without exposing layout edges.
-  // Same duration + ease as the page transition's enter so the motion language
-  // still matches — just a shorter travel.
+  // Panel sweeps up off-screen, carrying the words. Uses the page-transition OUT
+  // curve (client: "the same curve it was before" — quicker feel than power2.inOut).
+  tl.to(root, { yPercent: -100, duration: exitDur, ease: "panelOut" }, exitStart);
+
+  // Page content rises into place IN SYNC, same curve. 7dvh travel (not 15dvh) so
+  // the rise doesn't momentarily expose the nav bar / next section through the
+  // viewport edges. This is the same "move up with the page" feel the page
+  // transition gives every other page.
   tl.fromTo(pageContent,
     { y: "7dvh" },
-    { y: 0, duration: 0.9, ease: "power2.inOut" },
-    2.85
+    { y: 0, duration: exitDur, ease: "panelOut" },
+    exitStart
   );
 }
 
