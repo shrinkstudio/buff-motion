@@ -1,6 +1,6 @@
 // -----------------------------------------
 // INLINE VIDEO (Shrink Boilerplate)
-// Lazy loading, scroll-play, hover-play, playback controls
+// Lazy loading, scroll-play, hover-play, playback controls, mute toggle
 // -----------------------------------------
 
 let videoLib = null;
@@ -195,7 +195,10 @@ class VideoLibrary {
 
   setupVideoControls() {
     const videos = this.scope.querySelectorAll("video[data-video]");
-    videos.forEach((video) => this.handlePlaybackButtons(video));
+    videos.forEach((video) => {
+      this.handlePlaybackButtons(video);
+      this.handleMuteButtons(video);
+    });
   }
 
   setupHoverPlay() {
@@ -375,6 +378,66 @@ class VideoLibrary {
       { element: playbackButton, type: "click", handler: clickHandler },
       { element: video, type: "play", handler: playHandler },
       { element: video, type: "pause", handler: pauseHandler }
+    );
+  }
+
+  // Mute/unmute toggle — mirrors handlePlaybackButtons. Lean on the same
+  // data-video-playback attribute family:
+  //   [data-video-playback="mute-button"]  — the toggle button (in the component)
+  //   [data-video-playback="mute"]          — icon shown when sound is ON  (click mutes)
+  //   [data-video-playback="unmute"]        — icon shown when sound is OFF (click unmutes)
+  // Like play/pause, the VISIBLE icon is the action the button performs.
+  handleMuteButtons(video) {
+    const container = this.getComponentContainer(video);
+    if (!container) return;
+
+    const muteButton = container.querySelector('[data-video-playback="mute-button"]');
+    if (!muteButton) return;
+
+    const muteIcon = muteButton.querySelector('[data-video-playback="mute"]');
+    const unmuteIcon = muteButton.querySelector('[data-video-playback="unmute"]');
+    if (!muteIcon || !unmuteIcon) return;
+
+    const toggleMuteState = (isMuted) => {
+      if (isMuted) {
+        unmuteIcon.style.display = "flex";
+        unmuteIcon.style.visibility = "visible";
+        unmuteIcon.setAttribute("aria-hidden", "false");
+        muteIcon.style.display = "none";
+        muteIcon.style.visibility = "hidden";
+        muteIcon.setAttribute("aria-hidden", "true");
+        muteButton.setAttribute("aria-label", "Unmute video");
+      } else {
+        muteIcon.style.display = "flex";
+        muteIcon.style.visibility = "visible";
+        muteIcon.setAttribute("aria-hidden", "false");
+        unmuteIcon.style.display = "none";
+        unmuteIcon.style.visibility = "hidden";
+        unmuteIcon.setAttribute("aria-hidden", "true");
+        muteButton.setAttribute("aria-label", "Mute video");
+      }
+    };
+
+    toggleMuteState(video.muted);
+
+    const clickHandler = (event) => {
+      event.stopPropagation();
+      video.muted = !video.muted;
+      toggleMuteState(video.muted);
+    };
+
+    // Keep icons in sync if muted state changes from anywhere else.
+    const volumeHandler = () => toggleMuteState(video.muted);
+
+    muteButton.addEventListener("click", clickHandler);
+    video.addEventListener("volumechange", volumeHandler);
+
+    if (!this.eventListeners.has(video)) {
+      this.eventListeners.set(video, []);
+    }
+    this.eventListeners.get(video).push(
+      { element: muteButton, type: "click", handler: clickHandler },
+      { element: video, type: "volumechange", handler: volumeHandler }
     );
   }
 
