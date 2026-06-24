@@ -57,6 +57,11 @@ let durationDefault = 0.6;
 // it sets the motion character for every tween that doesn't override `ease`.
 CustomEase.create("buff", "M0,0 C0,0.837 0.2,0.999 1,1");
 CustomEase.create("energy", "M0,0 C0.32,0.72 0,1 1,1");
+// Page-transition panel curves (client-supplied).
+// panelIn  = cubic-bezier(0.048, 0.465, 0.123, 0.989) — fast cover, settles (the sweep-up cover).
+// panelOut = cubic-bezier(1, 0, 0.831, 0.992)         — slow start, accelerates away (the sweep-out reveal).
+CustomEase.create("panelIn", "M0,0 C0.048,0.465 0.123,0.989 1,1");
+CustomEase.create("panelOut", "M0,0 C1,0 0.831,0.992 1,1");
 gsap.defaults({ ease: "buff", duration: durationDefault });
 
 console.log("[buff] Bundle loaded — barba:", typeof barba, "gsap:", typeof gsap, "lenis:", hasLenis, "lottie:", typeof lottie);
@@ -265,7 +270,7 @@ function initAfterEnterFunctions(next) {
 
 
 // -----------------------------------------
-// PAGE TRANSITIONS (Curved Wipe + Lottie)
+// PAGE TRANSITIONS (Flat panel wipe + Lottie squiggle)
 // -----------------------------------------
 
 function runPageOnceAnimation(next) {
@@ -284,8 +289,6 @@ function runPageLeaveAnimation(current, next) {
 
   const transitionWrap = document.querySelector("[data-transition-wrap]");
   const transitionPanel = transitionWrap.querySelector("[data-transition-panel]");
-  const transitionPanelTop = transitionWrap.querySelector("[data-transition-panel-top]");
-  const transitionPanelBottom = transitionWrap.querySelector("[data-transition-panel-bottom]");
   const transitionLottieEl = transitionWrap.querySelector("[data-transition-lottie]");
 
   const tl = gsap.timeline({
@@ -296,73 +299,41 @@ function runPageLeaveAnimation(current, next) {
     return tl.set(current, { autoAlpha: 0 });
   }
 
-  // Reset panel state
-  tl.set(transitionPanel, {
-    autoAlpha: 1
-  }, 0);
+  // Flat panel now (curved top/bottom removed in the Designer) — quicker, tighter.
+  const mobile = window.matchMedia('(max-width: 767px)').matches;
+  const COVER_DUR = 0.65;
+  // Squiggle plays the full draw-on→off file. Kept proportional on mobile so it
+  // stays in sync with the 1.6x-scaled timeline below.
+  const SQUIGGLE_DUR = mobile ? 0.75 / 1.6 : 0.75;
 
-  tl.set(transitionPanelTop, {
-    scaleY: 0,
-    height: "5vw"
-  }, 0);
+  // Panel + squiggle visible, incoming page hidden behind it
+  tl.set(transitionPanel, { autoAlpha: 1 }, 0);
+  tl.set(transitionLottieEl, { autoAlpha: 1 }, 0);
+  tl.set(next, { autoAlpha: 0 }, 0);
 
-  tl.set(transitionPanelBottom, {
-    scaleY: 1,
-    height: "8vw"
-  }, 0);
+  // Panel sweeps up to cover — Panel In curve (fast cover, settle)
+  tl.fromTo(transitionPanel,
+    { yPercent: 0 },
+    { yPercent: -100, duration: COVER_DUR, ease: "panelIn" },
+    0);
 
-  // Squiggle centring is handled in Webflow CSS (the panel is display:flex
-  // justify/align center — the squiggle just needs to be a flex item, i.e.
-  // position:static/relative rather than absolute). The bundle only owns
-  // behaviour here: show it, then it rides up WITH the panel (its parent) and
-  // lands centred when the panel covers. No counter-translate — removed below.
-  tl.set(transitionLottieEl, {
-    autoAlpha: 1
-  }, 0);
+  // Current page parallaxes up with the cover, same curve
+  tl.fromTo(current,
+    { y: "0vh" },
+    { y: "-10dvh", duration: COVER_DUR, ease: "panelIn" },
+    0);
 
-  tl.set(next, {
-    autoAlpha: 0
-  }, 0);
-
-  // Panel sweeps up from bottom to cover screen
-  tl.fromTo(transitionPanel, {
-    yPercent: 0
-  }, {
-    yPercent: -100,
-    duration: 1,
-  }, 0);
-
-  // Top curve scales in — rounded leading edge
-  tl.fromTo(transitionPanelTop, {
-    scaleY: 0
-  }, {
-    scaleY: 1,
-    duration: 1,
-  }, "<");
-
-  // "swipe → lottie → swipe", but CONNECTED: the squiggle kicks at t=0.8 —
-  // just before the cover sweep fully lands (the centre's already covered by
-  // ~0.8) — so it flows out of the cover instead of waiting for a beat. Comes
-  // in a touch earlier (client: "a tad earlier") and reads as one continuous
-  // motion. Plays the full uncropped file (ip→op, draw-on THEN off) over 1.1s,
-  // finishing at 1.9s exactly as the reveal sweep begins (startEnter=1.9 in
-  // runPageEnterAnimation) — no dead gap between lottie and reveal.
+  // Squiggle kicks partway through the cover and plays quickly, so it's ~3/4
+  // through exactly as the reveal sweep begins (startEnter=0.85 in
+  // runPageEnterAnimation, shared clock via sync:true). Overlapping
+  // cover→squiggle→reveal removes the old static-blue dwell (client: "holds on
+  // plain blue for ~½s") and makes the whole thing quicker.
   tl.call(() => {
-    playLottieSegment(lottieRange?.ip, lottieRange?.op, 1.1);
-  }, null, 0.8);
-
-  // Current page slides up as it gets covered
-  tl.fromTo(current, {
-    y: "0vh"
-  }, {
-    y: "-10dvh",
-    duration: 1,
-  }, 0);
+    playLottieSegment(lottieRange?.ip, lottieRange?.op, SQUIGGLE_DUR);
+  }, null, 0.3);
 
   // Speed up on mobile (~1.6x faster), matching Forest's mobile pace
-  if (window.matchMedia('(max-width: 767px)').matches) {
-    tl.timeScale(1.6);
-  }
+  if (mobile) tl.timeScale(1.6);
 
   return tl;
 }
@@ -372,7 +343,6 @@ function runPageEnterAnimation(next) {
 
   const transitionWrap = document.querySelector("[data-transition-wrap]");
   const transitionPanel = transitionWrap.querySelector("[data-transition-panel]");
-  const transitionPanelBottom = transitionWrap.querySelector("[data-transition-panel-bottom]");
   const transitionLottieEl = transitionWrap.querySelector("[data-transition-lottie]");
 
   const tl = gsap.timeline();
@@ -384,59 +354,33 @@ function runPageEnterAnimation(next) {
     return new Promise(resolve => tl.call(resolve, null, "pageReady"));
   }
 
-  // Reveal picks up the INSTANT the squiggle finishes — no dead gap, so the
-  // whole thing reads as one connected motion (client: "needs to be a little
-  // more connected"). Squiggle starts at 0.8 + plays 1.1s = ends 1.9, so the
-  // reveal sweep begins at 1.9. (Down from 2.2; the cover→lottie overlap and
-  // this seamless lottie→reveal handoff are what tie the three beats together.)
-  tl.add("startEnter", 1.9);
+  const REVEAL_DUR = 0.65;
+
+  // Reveal begins when the squiggle is ~3/4 through (client: "squiggle 3/4 of the
+  // way through as the screen goes up"). Shared clock with the leave timeline via
+  // sync:true — leave plays the squiggle at 0.3 over 0.75s, so its 3/4 point is
+  // ~0.86; the reveal kicks at 0.85. Quicker overall, no static-blue dwell.
+  tl.add("startEnter", 0.85);
 
   // Show new page
-  tl.set(next, {
-    autoAlpha: 1,
-  }, "startEnter");
+  tl.set(next, { autoAlpha: 1 }, "startEnter");
 
-  // Panel continues upward out of view
-  tl.fromTo(transitionPanel, {
-    yPercent: -100,
-  }, {
-    yPercent: -200,
-    duration: 1,
-    overwrite: "auto",
-    immediateRender: false
-  }, "startEnter");
+  // Panel sweeps up and out — Panel Out curve (slow start, accelerates away)
+  tl.fromTo(transitionPanel,
+    { yPercent: -100 },
+    { yPercent: -200, duration: REVEAL_DUR, ease: "panelOut", overwrite: "auto", immediateRender: false },
+    "startEnter");
 
-  // (No lottie counter-translate anymore — it's dead-centred via top/left 50%
-  // + xPercent/yPercent -50 in runPageLeaveAnimation and simply rides up and
-  // out WITH the panel, which is its parent. The squiggle has already finished
-  // playing during the dwell by the time the enter sweep starts.)
-
-  // (No lottie call here anymore — the FULL squiggle already played during the
-  // still dwell in runPageLeaveAnimation. By startEnter it's finished on its
-  // last frame and rides up/out with the panel.)
-
-  // Bottom curve scales out — rounded trailing edge
-  tl.fromTo(transitionPanelBottom, {
-    scaleY: 1
-  }, {
-    scaleY: 0,
-    duration: 1,
-  }, "<");
-
-  // Hide panel + lottie after it exits
-  tl.set(transitionPanel, {
-    autoAlpha: 0
-  }, ">");
-
-  tl.set(transitionLottieEl, {
-    autoAlpha: 0
-  }, "<");
-
-  // New page slides up from below
+  // New page rises into place with the reveal, same curve
   tl.from(next, {
     y: "15dvh",
-    duration: 1,
+    duration: REVEAL_DUR,
+    ease: "panelOut",
   }, "startEnter");
+
+  // Hide panel + lottie once they've swept out
+  tl.set(transitionPanel, { autoAlpha: 0 }, ">");
+  tl.set(transitionLottieEl, { autoAlpha: 0 }, "<");
 
   tl.add("pageReady");
   tl.call(() => {
