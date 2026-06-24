@@ -23,7 +23,6 @@
 let tl = null;
 let navWrap = null;
 let toggleHandlers = [];
-let hoverHandlers = [];
 let keyHandler = null;
 let arrowLottie = null;
 let bgLottie = null;
@@ -140,8 +139,6 @@ export function initSidenav(scope) {
   // Cheap no-op when there's nothing bound yet.
   toggleHandlers.forEach(({ el, handler }) => el.removeEventListener("click", handler));
   toggleHandlers = [];
-  hoverHandlers.forEach(({ el, type, handler }) => el.removeEventListener(type, handler));
-  hoverHandlers = [];
   if (keyHandler) {
     document.removeEventListener("keydown", keyHandler);
     keyHandler = null;
@@ -206,11 +203,6 @@ export function initSidenav(scope) {
   const openFrame = arrowLottieEl
     ? parseFloat(arrowLottieEl.getAttribute("data-lottie-open-frame") || "63")
     : 63;
-  // A tiny hover nudge advances the resting arrow a few frames (see hover
-  // handlers below). Overridable via [data-lottie-hover-frame].
-  const hoverFrame = arrowLottieEl
-    ? parseFloat(arrowLottieEl.getAttribute("data-lottie-hover-frame") || String(closedFrame + 1))
-    : closedFrame + 1;
   arrowLottie = loadNavLottie(arrowLottieEl);
   if (arrowLottie) {
     // Drive playback so 31.5 → 63 takes 0.9s. Lottie is 90f @ 30fps; playSegments
@@ -389,26 +381,9 @@ export function initSidenav(scope) {
     toggleHandlers.push({ el, handler: toggle });
   });
 
-  // Tiny hover affordance — when the menu is CLOSED, hovering the button nudges
-  // the resting arrow a few frames forward; leaving returns it to rest. Skipped
-  // while the menu is open so it never fights the open/close playback.
-  // EXPLICIT absolute frames — totally ignore the start of the Lottie. Hover just
-  // ticks 31.5 → 32.5; leaving ticks 32.5 → 31.5. (currentFrame reads relative to
-  // the segment, which made hover replay from the very start before nudging.)
-  if (menuButton && arrowLottie) {
-    const onEnter = () => {
-      if (navWrap.getAttribute("data-nav-state") === "open") return;
-      arrowLottie.playSegments([closedFrame, hoverFrame], true);
-    };
-    const onLeave = () => {
-      if (navWrap.getAttribute("data-nav-state") === "open") return;
-      arrowLottie.playSegments([hoverFrame, closedFrame], true);
-    };
-    menuButton.addEventListener("mouseenter", onEnter);
-    menuButton.addEventListener("mouseleave", onLeave);
-    hoverHandlers.push({ el: menuButton, type: "mouseenter", handler: onEnter });
-    hoverHandlers.push({ el: menuButton, type: "mouseleave", handler: onLeave });
-  }
+  // (Hover nudge removed — it fought the close: leaving the button mid-close
+  // fired a mouseleave that interrupted the 63→31.5 play and snapped. Hover is
+  // being handled separately in the Webflow Designer.)
 
   keyHandler = (e) => {
     if (e.key === "Escape" && navWrap.getAttribute("data-nav-state") === "open") {
@@ -421,8 +396,6 @@ export function initSidenav(scope) {
 export function destroySidenav() {
   toggleHandlers.forEach(({ el, handler }) => el.removeEventListener("click", handler));
   toggleHandlers = [];
-  hoverHandlers.forEach(({ el, type, handler }) => el.removeEventListener(type, handler));
-  hoverHandlers = [];
   if (keyHandler) document.removeEventListener("keydown", keyHandler);
   keyHandler = null;
 
