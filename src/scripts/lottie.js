@@ -130,7 +130,33 @@ export function initLottieAnimations(scope) {
       // the trigger is currently active. Matches the manual initial-state
       // check content-reveal does for data-reveal-group above the fold.
       requestAnimationFrame(() => {
-        if (st.isActive) handleEnter();
+        if (!st.isActive) return;
+
+        // Hold above-the-fold lotties (e.g. the home hero) until the intro
+        // preloader has lifted. On first load the hero lottie is above the fold,
+        // so this manual fire would otherwise play it INSTANTLY — out of sight,
+        // behind the full-screen intro panel (client noticed it playing hidden).
+        // Wait for buff:home-intro-done instead. Only while the intro is actually
+        // playing; a safety timeout prevents stranding the lottie if the signal
+        // never arrives. Reduced-motion + non-home pages fire immediately.
+        const introStatus = document.body.getAttribute("data-home-intro-status");
+        const introPlaying = !reduceMotion && (
+          introStatus === "playing" ||
+          (introStatus !== "done" && !!document.querySelector("[data-home-intro]"))
+        );
+
+        if (introPlaying) {
+          let fired = false;
+          const fire = () => {
+            if (fired) return;
+            fired = true;
+            if (target.isConnected) handleEnter();
+          };
+          document.addEventListener("buff:home-intro-done", fire, { once: true });
+          setTimeout(fire, 6000);
+        } else {
+          handleEnter();
+        }
       });
     } else {
       // No ScrollTrigger — just load immediately
