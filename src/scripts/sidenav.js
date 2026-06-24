@@ -23,6 +23,7 @@
 let tl = null;
 let navWrap = null;
 let toggleHandlers = [];
+let hoverHandlers = [];
 let keyHandler = null;
 let arrowLottie = null;
 let bgLottie = null;
@@ -82,8 +83,8 @@ function resetSidenavState() {
   if (arrowLottie && typeof arrowLottie.goToAndStop === "function") {
     const arrowEl = document.querySelector("[data-nav-lottie-arrow]");
     const closed = arrowEl
-      ? parseInt(arrowEl.getAttribute("data-lottie-frame") || "85", 10)
-      : 85;
+      ? parseFloat(arrowEl.getAttribute("data-lottie-frame") || "31.5")
+      : 31.5;
     arrowLottie.goToAndStop(closed, true);
   }
   if (bgLottie && typeof bgLottie.goToAndStop === "function") {
@@ -121,6 +122,8 @@ export function initSidenav(scope) {
   // Cheap no-op when there's nothing bound yet.
   toggleHandlers.forEach(({ el, handler }) => el.removeEventListener("click", handler));
   toggleHandlers = [];
+  hoverHandlers.forEach(({ el, type, handler }) => el.removeEventListener(type, handler));
+  hoverHandlers = [];
   if (keyHandler) {
     document.removeEventListener("keydown", keyHandler);
     keyHandler = null;
@@ -174,15 +177,33 @@ export function initSidenav(scope) {
   // Override per-element via:
   //   [data-lottie-frame="N"]       — closed/resting frame (default 85)
   //   [data-lottie-open-frame="N"]  — open/active frame (default 60)
+  // Client-specified cadence (from the Webflow Lottie scrub):
+  //   closed / resting = frame 31.5 (35% of 90)
+  //   open / active    = frame 63   (70% of 90)
+  //   open plays 31.5 → 63 in 0.9s  (close reverses, same length)
+  // parseFloat — 31.5 is fractional.
   const closedFrame = arrowLottieEl
-    ? parseInt(arrowLottieEl.getAttribute("data-lottie-frame") || "85", 10)
-    : 85;
+    ? parseFloat(arrowLottieEl.getAttribute("data-lottie-frame") || "31.5")
+    : 31.5;
   const openFrame = arrowLottieEl
-    ? parseInt(arrowLottieEl.getAttribute("data-lottie-open-frame") || "60", 10)
-    : 60;
+    ? parseFloat(arrowLottieEl.getAttribute("data-lottie-open-frame") || "63")
+    : 63;
+  // A tiny hover nudge advances the resting arrow a few frames (see hover
+  // handlers below). Overridable via [data-lottie-hover-frame].
+  const hoverFrame = arrowLottieEl
+    ? parseFloat(arrowLottieEl.getAttribute("data-lottie-hover-frame") || String(closedFrame + 4))
+    : closedFrame + 4;
   arrowLottie = loadNavLottie(arrowLottieEl);
   if (arrowLottie) {
-    arrowLottie.addEventListener("DOMLoaded", () => arrowLottie.goToAndStop(closedFrame, true));
+    // Drive playback so 31.5 → 63 takes 0.9s. Lottie is 90f @ 30fps; playSegments
+    // runs at native fps, so set speed = segmentFrames / (duration * fps) to hit
+    // the client's 0.9s. Linear playback (matches the IX2 "Linear (None)" easing).
+    const NATIVE_FPS = 30, OPEN_DURATION = 0.9;
+    const arrowSpeed = Math.abs(openFrame - closedFrame) / (OPEN_DURATION * NATIVE_FPS);
+    arrowLottie.addEventListener("DOMLoaded", () => {
+      arrowLottie.setSpeed(arrowSpeed);
+      arrowLottie.goToAndStop(closedFrame, true);
+    });
   }
 
   // Mobile: the bg squiggle Lottie is the heaviest per-frame render in the nav
@@ -250,13 +271,15 @@ export function initSidenav(scope) {
           bgLottie.goToAndPlay(0, true);
         }
       }, null, 0.6)
-      // Phase 3 (~0.55s onwards): links SNAP on at full opacity — no mask, no
-      // fade (client: the OG didn't reveal them from behind a mask). Opacity
-      // snaps per link (duration ~0, staggered); deliberately NO y-translate, so
-      // nothing slides up through an overflow:hidden wrapper to read as a mask.
+      // Phase 3 (~0.55s onwards): links snap on at full opacity THEN slide up
+      // into place. The link stays fully opaque (no fade) and starts pushed down
+      // 120% — its [sidenav__menu-list-item] wrapper is overflow:hidden, so the
+      // clip hides it below the line and it reveals as it slides up. This is the
+      // crisp slide-up the client asked for ("snap on THEN slide up"), distinct
+      // from the old fade-from-behind-a-mask (the fade was the masky part).
       .fromTo(menuLinks,
-        { autoAlpha: 0 },
-        { autoAlpha: 1, duration: 0.001, stagger: 0.06 },
+        { yPercent: 120, autoAlpha: 1 },
+        { yPercent: 0, duration: 0.6, ease: "buff", stagger: 0.06 },
         0.55)
       .fromTo(fadeTargets,
         { autoAlpha: 0, yPercent: 30 },
@@ -346,6 +369,24 @@ export function initSidenav(scope) {
     toggleHandlers.push({ el, handler: toggle });
   });
 
+  // Tiny hover affordance — when the menu is CLOSED, hovering the button nudges
+  // the resting arrow a few frames forward; leaving returns it to rest. Skipped
+  // while the menu is open so it never fights the open/close playback.
+  if (menuButton && arrowLottie) {
+    const onEnter = () => {
+      if (navWrap.getAttribute("data-nav-state") === "open") return;
+      arrowLottie.playSegments([arrowLottie.currentFrame, hoverFrame], true);
+    };
+    const onLeave = () => {
+      if (navWrap.getAttribute("data-nav-state") === "open") return;
+      arrowLottie.playSegments([arrowLottie.currentFrame, closedFrame], true);
+    };
+    menuButton.addEventListener("mouseenter", onEnter);
+    menuButton.addEventListener("mouseleave", onLeave);
+    hoverHandlers.push({ el: menuButton, type: "mouseenter", handler: onEnter });
+    hoverHandlers.push({ el: menuButton, type: "mouseleave", handler: onLeave });
+  }
+
   keyHandler = (e) => {
     if (e.key === "Escape" && navWrap.getAttribute("data-nav-state") === "open") {
       closeNav();
@@ -357,6 +398,8 @@ export function initSidenav(scope) {
 export function destroySidenav() {
   toggleHandlers.forEach(({ el, handler }) => el.removeEventListener("click", handler));
   toggleHandlers = [];
+  hoverHandlers.forEach(({ el, type, handler }) => el.removeEventListener(type, handler));
+  hoverHandlers = [];
   if (keyHandler) document.removeEventListener("keydown", keyHandler);
   keyHandler = null;
 
