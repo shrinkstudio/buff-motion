@@ -301,8 +301,10 @@ function runPageLeaveAnimation(current, next) {
 
   // Flat panel now (curved top/bottom removed in the Designer) — quicker, tighter.
   const COVER_DUR = 0.65;
-  // Squiggle plays the full draw-on→off file.
-  const SQUIGGLE_DUR = 0.75;
+  // Squiggle plays the full draw-on→off file. Slowed 0.75 → 1.0 (client: slow the
+  // lottie a bit). The panel (blue bg) cover/reveal timing is UNCHANGED — client
+  // said its speed/timing is perfect — so only the squiggle draws more calmly.
+  const SQUIGGLE_DUR = 1.0;
 
   // Panel + squiggle visible, incoming page hidden behind it
   tl.set(transitionPanel, { autoAlpha: 1 }, 0);
@@ -369,11 +371,16 @@ function runPageEnterAnimation(next) {
     { yPercent: -200, duration: REVEAL_DUR, ease: "panelOut", overwrite: "auto", immediateRender: false },
     "startEnter");
 
-  // New page rises into place with the reveal, same curve
+  // New page rises into place. GENTLER than the panel (client) — power2.out
+  // settles softly instead of panelOut's hard accelerate-away, over a slightly
+  // longer 0.8s. Travel cut 15dvh → 7dvh: at 15dvh the rise momentarily exposed
+  // layout edges on Home (the nav bar + a peek of the hero-text section past the
+  // sticky hero) — the "glitch when navigating back to Home". 7dvh is the same
+  // value the intro settled on for exactly this reason.
   tl.from(next, {
-    y: "15dvh",
-    duration: REVEAL_DUR,
-    ease: "panelOut",
+    y: "7dvh",
+    duration: 0.8,
+    ease: "power2.out",
   }, "startEnter");
 
   // Hide panel + lottie once they've swept out
