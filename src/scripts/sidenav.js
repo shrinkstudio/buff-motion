@@ -87,9 +87,9 @@ function resetSidenavState() {
     arrowLottie.goToAndStop(closed, true);
   }
   if (bgLottie && typeof bgLottie.goToAndStop === "function") {
-    // Mobile keeps the squiggle static-drawn (last frame); desktop resets to 0.
-    const mobileStatic = window.matchMedia("(max-width: 991px)").matches;
-    bgLottie.goToAndStop(mobileStatic ? bgLottie.totalFrames : 0, true);
+    // Reset to frame 0 (un-drawn) on every viewport — the squiggle now draws on
+    // each open across all breakpoints (mobile included).
+    bgLottie.goToAndStop(0, true);
   }
 }
 
@@ -225,12 +225,11 @@ export function initSidenav(scope) {
     });
   }
 
-  // Mobile: the bg squiggle Lottie is the heaviest per-frame render in the nav
-  // (animated SVG path drawing). On mobile we make it STATIC — show it fully
-  // drawn at its last frame but never run the per-frame draw-on. Takes weight
-  // out of the menu open/close and reduces jank on lower-spec mobile CPUs.
-  // Checked live (not cached) so a desktop→mobile resize is honoured.
-  const bgLottieStatic = () => window.matchMedia("(max-width: 991px)").matches;
+  // The bg squiggle Lottie now ANIMATES on every viewport (client reinstated it
+  // on mobile — "turn back on the lottie, smooth af"). It used to be static below
+  // 991px to save the per-frame SVG draw on lower-spec CPUs; if mobile jank shows
+  // up, flip this back to a matchMedia("(max-width: 991px)") check.
+  const bgLottieStatic = () => false;
 
   // Background Lottie inside the menu — desktop: held at frame 0 until the menu
   // opens (then draws on). Mobile: snapped to the last frame (fully drawn, static).

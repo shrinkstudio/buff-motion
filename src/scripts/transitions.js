@@ -300,11 +300,9 @@ function runPageLeaveAnimation(current, next) {
   }
 
   // Flat panel now (curved top/bottom removed in the Designer) — quicker, tighter.
-  const mobile = window.matchMedia('(max-width: 767px)').matches;
   const COVER_DUR = 0.65;
-  // Squiggle plays the full draw-on→off file. Kept proportional on mobile so it
-  // stays in sync with the 1.6x-scaled timeline below.
-  const SQUIGGLE_DUR = mobile ? 0.75 / 1.6 : 0.75;
+  // Squiggle plays the full draw-on→off file.
+  const SQUIGGLE_DUR = 0.75;
 
   // Panel + squiggle visible, incoming page hidden behind it
   tl.set(transitionPanel, { autoAlpha: 1 }, 0);
@@ -332,8 +330,8 @@ function runPageLeaveAnimation(current, next) {
     playLottieSegment(lottieRange?.ip, lottieRange?.op, SQUIGGLE_DUR);
   }, null, 0.3);
 
-  // Speed up on mobile (~1.6x faster), matching Forest's mobile pace
-  if (mobile) tl.timeScale(1.6);
+  // Mobile runs at the SAME speed as desktop now (client: the 1.6x mobile
+  // speed-up made the transition "very fast" on phones). No timeScale here.
 
   return tl;
 }
@@ -388,10 +386,8 @@ function runPageEnterAnimation(next) {
   }, null, "pageReady");
   tl.call(resetPage, [next], "pageReady");
 
-  // Speed up on mobile (~1.6x faster), matching Forest's mobile pace
-  if (window.matchMedia('(max-width: 767px)').matches) {
-    tl.timeScale(1.6);
-  }
+  // Mobile runs at the SAME speed as desktop now (client: mobile transition was
+  // "very fast"). The leave timeline matches — both unscaled — so sync:true holds.
 
   return new Promise(resolve => {
     tl.call(resolve, null, "pageReady");
