@@ -1,3 +1,9 @@
 node_modules/
 .DS_Store
 .env
+
+# Local CMS-import / migration working files (not part of the bundle)
+.tmp/
+data/
+redirects-projects.md
+scripts/
