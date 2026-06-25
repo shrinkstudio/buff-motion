@@ -195,7 +195,7 @@ export function initSidenav(scope) {
   // Client-specified cadence (from the Webflow Lottie scrub):
   //   closed / resting = frame 31.5 (35% of 90)
   //   open / active    = frame 63   (70% of 90)
-  //   open plays 31.5 → 63 in 0.9s  (close reverses, same length)
+  //   open plays 31.5 → 63 in 0.9s
   // parseFloat — 31.5 is fractional.
   const closedFrame = arrowLottieEl
     ? parseFloat(arrowLottieEl.getAttribute("data-lottie-frame") || "31.5")
@@ -203,6 +203,15 @@ export function initSidenav(scope) {
   const openFrame = arrowLottieEl
     ? parseFloat(arrowLottieEl.getAttribute("data-lottie-open-frame") || "63")
     : 63;
+  // CLOSE settles to frame 90, NOT back down to 31.5. Closing 63→31.5 reverses
+  // through the 32–47 wind-up (the sideways "moves forward" kick the client
+  // flagged). Frames 47–90 are pure rotation (no slide), so 63→90 rotates the X
+  // neatly back to a straight arrow with no sideways move. Frame 90 is the same
+  // visual pose as 31.5 (both rot 0°, pos 0,0), so the next open's playSegments
+  // jumps 90→31.5 invisibly before the flourish — no re-arm needed.
+  const settleFrame = arrowLottieEl
+    ? parseFloat(arrowLottieEl.getAttribute("data-lottie-settle-frame") || "90")
+    : 90;
   arrowLottie = loadNavLottie(arrowLottieEl);
   if (arrowLottie) {
     // Drive playback so 31.5 → 63 takes 0.9s. Lottie is 90f @ 30fps; playSegments
@@ -280,23 +289,23 @@ export function initSidenav(scope) {
         } else {
           bgLottie.goToAndPlay(0, true);
         }
-      }, null, 0.6)
-      // Phase 3 (~0.3s onwards): links come in ONE AT A TIME — each SNAPS on at
+      }, null, 0.45)
+      // Phase 3 (~0.2s onwards): links come in ONE AT A TIME — each SNAPS on at
       // full opacity (no fade) then LIFTS up into place. CRITICAL client ask: NO
       // MASK. The [sidenav__menu-list-item] overflow:hidden clip is overridden to
       // visible (see injectSidenavCSS), so the link is fully visible the whole
       // lift — nothing is revealed from behind a clip. Opacity snaps per link
       // (duration ~0) while a small y-lift carries the motion; both share the
       // stagger so each link pops + lifts as a unit.
-      // Pulled in 0.55 → 0.3 (client: the menu sat blank a fraction too long) so
-      // the links start while the panels are still wiping in.
+      // Pulled in further → 0.2 (client wanted everything ever so slightly earlier;
+      // was 0.55, then 0.3) so the links start right as the panels begin wiping in.
       .set(menuLinks, { y: 45, autoAlpha: 0 }, 0)
-      .to(menuLinks, { autoAlpha: 1, duration: 0.001, stagger: 0.08 }, 0.3)
-      .to(menuLinks, { y: 0, duration: 0.5, ease: "buff", stagger: 0.08 }, 0.3)
+      .to(menuLinks, { autoAlpha: 1, duration: 0.001, stagger: 0.08 }, 0.2)
+      .to(menuLinks, { y: 0, duration: 0.5, ease: "buff", stagger: 0.08 }, 0.2)
       .fromTo(fadeTargets,
         { autoAlpha: 0, yPercent: 30 },
         { autoAlpha: 1, yPercent: 0, stagger: 0.025, duration: 0.6 },
-        0.55);
+        0.45);
 
     // Arrow Lottie plays at t=0 — must react instantly to the click, not delayed.
     // EXPLICIT absolute frames [closedFrame, openFrame] = 31.5 → 63. Do NOT use
@@ -358,14 +367,14 @@ export function initSidenav(scope) {
       })
       .set([menuLinks, fadeTargets], { clearProps: "all" });
 
-    // Arrow Lottie close: client wants it to LITERALLY just go 63 → 31.5. EXPLICIT
-    // absolute frames [openFrame, closedFrame] — playSegments plays them in reverse
-    // (firstFrame > lastFrame). Do NOT use arrowLottie.currentFrame here: it reads
-    // relative to the active segment, so the close was snapping/replaying from the
-    // start rather than cleanly reversing 63 → 31.5.
+    // Arrow Lottie close: rotate the X NEATLY back to a straight arrow (client:
+    // "rotate neatly back to OG, doesn't need to move forwards as much"). EXPLICIT
+    // absolute frames [openFrame, settleFrame] = 63 → 90, which stays inside the
+    // 47–90 no-slide zone — pure rotation, no sideways wind-up. Do NOT use
+    // arrowLottie.currentFrame (it reads relative to the active segment).
     if (arrowLottie) {
       tl.call(() => {
-        arrowLottie.playSegments([openFrame, closedFrame], true);
+        arrowLottie.playSegments([openFrame, settleFrame], true);
       }, null, 0);
     } else if (menuButtonIcon) {
       tl.to(menuButtonIcon, { rotate: 0 }, 0);
