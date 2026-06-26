@@ -218,6 +218,12 @@ function initBeforeEnterFunctions(next) {
   // by adding an unconditional tl.kill() + gsap.set clearProps in destroy,
   // ensuring the OLD state is fully wiped before the NEW init runs (which
   // happens in the same tick, immediately after destroy, in afterEnter).
+
+  // STATIC lotties only — pre-init the NEW page's [data-lottie-static] elements
+  // NOW (beforeEnter, while the transition panel still covers the screen) so they
+  // render BEFORE the page reveals, instead of snapping in during afterEnter.
+  // The full afterEnter pass skips them (already data-lottie-fired).
+  if (has('[data-lottie-static="true"]')) initLottieAnimations(nextPage, { staticOnly: true });
 }
 
 function initAfterEnterFunctions(next) {

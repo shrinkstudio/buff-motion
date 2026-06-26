@@ -24,7 +24,7 @@
 let triggers = [];
 let lottieOnlyStyle = null;
 
-export function initLottieAnimations(scope) {
+export function initLottieAnimations(scope, opts = {}) {
   // Hide data-lottie-only containers below tablet
   if (!lottieOnlyStyle) {
     lottieOnlyStyle = document.createElement("style");
@@ -36,6 +36,11 @@ export function initLottieAnimations(scope) {
   scope = scope || document;
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const hasScrollTrigger = typeof ScrollTrigger !== "undefined";
+  // staticOnly pass — runs EARLY (beforeEnter, during the page transition) and
+  // only touches [data-lottie-static] elements, so they're rendered before the
+  // page reveals instead of snapping in afterEnter. The full afterEnter pass
+  // then skips them (data-lottie-fired) and wires the animated ones normally.
+  const staticOnly = opts.staticOnly === true;
 
   // HOME first load: hold the ENTIRE lottie init until the intro preloader has
   // lifted. The hero squiggle is above the fold, so it would otherwise fire
@@ -48,7 +53,7 @@ export function initLottieAnimations(scope) {
   const introActive = !reduceMotion
     && document.body.getAttribute("data-home-intro-status") !== "done"
     && !!document.querySelector("[data-home-intro]");
-  if (introActive) {
+  if (introActive && !staticOnly) {
     let done = false;
     let timer;
     const go = () => {
@@ -65,8 +70,9 @@ export function initLottieAnimations(scope) {
     return;
   }
 
-  scope.querySelectorAll("[data-lottie]").forEach(target => {
-    // Skip if already fired (e.g. transition lottie)
+  const selector = staticOnly ? "[data-lottie][data-lottie-static='true']" : "[data-lottie]";
+  scope.querySelectorAll(selector).forEach(target => {
+    // Skip if already fired (e.g. transition lottie, or static pre-inited in beforeEnter)
     if (target.hasAttribute("data-lottie-fired")) return;
 
     // Apply attribute-driven transforms
@@ -146,7 +152,13 @@ export function initLottieAnimations(scope) {
       }
     }
 
-    if (hasScrollTrigger) {
+    if (isStatic) {
+      // STATIC — no scroll choreography. Render it NOW so it's present with the
+      // page (it loads in beforeEnter, before the reveal) instead of snapping in
+      // after the transition. Tracked with a null st so destroy still cleans it up.
+      handleEnter();
+      triggers.push({ st: null, anim: () => anim, target });
+    } else if (hasScrollTrigger) {
       const st = ScrollTrigger.create({
         trigger: target,
         start: "top bottom+=50%",
@@ -186,7 +198,7 @@ export function initLottieAnimations(scope) {
 
 export function destroyLottieAnimations() {
   triggers.forEach(({ st, anim, target }) => {
-    st.kill();
+    if (st) st.kill(); // static entries have no ScrollTrigger
     const a = anim();
     if (a) {
       a.destroy();
