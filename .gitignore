@@ -6,4 +6,4 @@ node_modules/
 .tmp/
 data/
 redirects-projects.md
-scripts/
+/scripts/

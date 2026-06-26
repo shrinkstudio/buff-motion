@@ -13,6 +13,9 @@
 //   data-lottie-loop      — "true"/"false"  (default: "true")
 //   data-lottie-start     — start % of total frames (default: 0)
 //   data-lottie-end       — end % of total frames   (default: 100)
+//   data-lottie-static    — "true" → never animate, hold the END frame (the
+//                           finished/fully-drawn pose). For neutralising a Lottie
+//                           whose draw-on glitches in the SVG renderer.
 //
 // Container attribute (on parent, e.g. Grid Column):
 //   data-lottie-only      — hides this element below 768px (tablet)
@@ -83,6 +86,10 @@ export function initLottieAnimations(scope) {
     }
 
     let anim = null;
+    // STATIC: hold the finished (end) frame, never animate. Use to neutralise a
+    // Lottie whose draw-on trim-path glitches in the SVG renderer — the final
+    // drawn frame renders clean. Remove the attribute to re-animate.
+    const isStatic = target.getAttribute("data-lottie-static") === "true";
 
     function handleEnter() {
       if (!target.hasAttribute("data-lottie-fired")) {
@@ -101,15 +108,21 @@ export function initLottieAnimations(scope) {
         });
 
         anim.addEventListener("DOMLoaded", () => {
+          const totalFrames = anim.totalFrames;
+          const startFrame = Math.round((startPct / 100) * totalFrames);
+          const endFrame = Math.round((endPct / 100) * totalFrames);
+
+          // Static — hold the finished frame, no animation.
+          if (isStatic) {
+            anim.goToAndStop(endFrame, true);
+            return;
+          }
+          // Reduced motion — hold the configured rest frame (default 0).
           if (reduceMotion) {
             const frame = parseInt(target.getAttribute("data-lottie-frame") || "0", 10);
             anim.goToAndStop(frame, true);
             return;
           }
-
-          const totalFrames = anim.totalFrames;
-          const startFrame = Math.round((startPct / 100) * totalFrames);
-          const endFrame = Math.round((endPct / 100) * totalFrames);
 
           // Stop at end frame when not looping
           if (!shouldLoop) {
@@ -122,13 +135,13 @@ export function initLottieAnimations(scope) {
 
           anim.goToAndPlay(startFrame, true);
         });
-      } else if (anim && !reduceMotion) {
+      } else if (anim && !reduceMotion && !isStatic) {
         anim.play();
       }
     }
 
     function handleLeave() {
-      if (anim && !reduceMotion) {
+      if (anim && !reduceMotion && !isStatic) {
         anim.pause();
       }
     }
