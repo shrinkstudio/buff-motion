@@ -317,16 +317,19 @@ function runPageLeaveAnimation(current, next) {
   tl.set(transitionLottieEl, { autoAlpha: 1 }, 0);
   tl.set(next, { autoAlpha: 0 }, 0);
 
-  // Panel sweeps up to cover — Panel In curve (fast cover, settle)
+  // Panel sweeps up to cover — STRONG ease-off (power4.out): responds fast to the
+  // click then decelerates smoothly into the covered position. Replaces panelIn,
+  // which covered ~99% in the first ~12% of its time — that read as a hard SNAP
+  // on press (client: "snapping when you press another page").
   tl.fromTo(transitionPanel,
     { yPercent: 0 },
-    { yPercent: -100, duration: COVER_DUR, ease: "panelIn" },
+    { yPercent: -100, duration: COVER_DUR, ease: "power4.out" },
     0);
 
-  // Current page parallaxes up with the cover, same curve
+  // Current page parallaxes up with the cover, same curve (power4.out)
   tl.fromTo(current,
     { y: "0vh" },
-    { y: "-10dvh", duration: COVER_DUR, ease: "panelIn" },
+    { y: "-10dvh", duration: COVER_DUR, ease: "power4.out" },
     0);
 
   // Squiggle kicks partway through the cover and plays quickly, so it's ~3/4
@@ -377,16 +380,18 @@ function runPageEnterAnimation(next) {
     { yPercent: -200, duration: REVEAL_DUR, ease: "panelOut", overwrite: "auto", immediateRender: false },
     "startEnter");
 
-  // New page rises into place — GENTLE settle (power3.out, a touch softer than
-  // power2.out) but LOCKED to the panel: same start AND the same REVEAL_DUR, so
-  // it finishes exactly when the panel clears instead of trailing ~0.15s behind
-  // (the "disconnected" lag from the old 0.8s). Travel 7dvh — at 15dvh the rise
-  // momentarily exposed layout edges on Home (nav bar + a peek of the hero-text
-  // past the sticky hero); 7dvh is the value the intro settled on for the same reason.
+  // New page rises into place — IDENTICAL to the hero intro exit: panel + page
+  // share ONE curve (panelOut), the SAME start, and the SAME duration, so they
+  // move as a single locked unit (client: "match the hero, the page-in is
+  // perfect"). The old power3.out gave the page a different curve from the panel
+  // — same start/duration but a mismatched shape — which read as out-of-sync /
+  // glitchy. Travel 7dvh — at 15dvh the rise momentarily exposed layout edges on
+  // Home (nav bar + a peek of hero-text past the sticky hero); 7dvh is the value
+  // the intro settled on for the same reason.
   tl.from(next, {
     y: "7dvh",
     duration: REVEAL_DUR,
-    ease: "power3.out",
+    ease: "panelOut",
   }, "startEnter");
 
   // Hide panel + lottie once they've swept out
