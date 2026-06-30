@@ -377,16 +377,16 @@ function runPageEnterAnimation(next) {
     { yPercent: -200, duration: REVEAL_DUR, ease: "panelOut", overwrite: "auto", immediateRender: false },
     "startEnter");
 
-  // New page rises into place. GENTLER than the panel (client) — power2.out
-  // settles softly instead of panelOut's hard accelerate-away, over a slightly
-  // longer 0.8s. Travel cut 15dvh → 7dvh: at 15dvh the rise momentarily exposed
-  // layout edges on Home (the nav bar + a peek of the hero-text section past the
-  // sticky hero) — the "glitch when navigating back to Home". 7dvh is the same
-  // value the intro settled on for exactly this reason.
+  // New page rises into place — GENTLE settle (power3.out, a touch softer than
+  // power2.out) but LOCKED to the panel: same start AND the same REVEAL_DUR, so
+  // it finishes exactly when the panel clears instead of trailing ~0.15s behind
+  // (the "disconnected" lag from the old 0.8s). Travel 7dvh — at 15dvh the rise
+  // momentarily exposed layout edges on Home (nav bar + a peek of the hero-text
+  // past the sticky hero); 7dvh is the value the intro settled on for the same reason.
   tl.from(next, {
     y: "7dvh",
-    duration: 0.8,
-    ease: "power2.out",
+    duration: REVEAL_DUR,
+    ease: "power3.out",
   }, "startEnter");
 
   // Hide panel + lottie once they've swept out
