@@ -364,6 +364,9 @@ function runPageEnterAnimation(next) {
   }
 
   const REVEAL_DUR = 0.65;
+  // Page rise runs slightly longer than the panel sweep so its ease-out settle
+  // stays visible after the panel has cleared (the page "easing into position").
+  const PAGE_RISE_DUR = 0.85;
 
   // Reveal begins when the squiggle is ~3/4 through (client: "squiggle 3/4 of the
   // way through as the screen goes up"). Shared clock with the leave timeline via
@@ -380,18 +383,19 @@ function runPageEnterAnimation(next) {
     { yPercent: -200, duration: REVEAL_DUR, ease: "panelOut", overwrite: "auto", immediateRender: false },
     "startEnter");
 
-  // New page rises into place — IDENTICAL to the hero intro exit: panel + page
-  // share ONE curve (panelOut), the SAME start, and the SAME duration, so they
-  // move as a single locked unit (client: "match the hero, the page-in is
-  // perfect"). The old power3.out gave the page a different curve from the panel
-  // — same start/duration but a mismatched shape — which read as out-of-sync /
-  // glitchy. Travel 7dvh — at 15dvh the rise momentarily exposed layout edges on
-  // Home (nav bar + a peek of hero-text past the sticky hero); 7dvh is the value
-  // the intro settled on for the same reason.
+  // New page rises into place with a REAL EASE-OUT so it DECELERATES to a gentle
+  // stop — never snapping. The panel keeps panelOut (client loves it), but that
+  // curve ACCELERATES into its end position — so a page on panelOut arrives at
+  // full speed and slams to its mark: the "linear key frame / bang" the client
+  // flagged. expo.out brakes the page smoothly as it lands. It also runs a touch
+  // longer than the panel (PAGE_RISE_DUR vs REVEAL_DUR) so the soft settle stays
+  // visible easing into position underneath the already-swept panel — which is
+  // exactly what the client described ("the page underneath easing into position").
+  // Travel 7dvh — at 15dvh the rise momentarily exposed layout edges on Home.
   tl.from(next, {
     y: "7dvh",
-    duration: REVEAL_DUR,
-    ease: "panelOut",
+    duration: PAGE_RISE_DUR,
+    ease: "expo.out",
   }, "startEnter");
 
   // Hide panel + lottie once they've swept out
