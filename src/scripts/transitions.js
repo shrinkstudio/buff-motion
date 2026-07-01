@@ -364,9 +364,6 @@ function runPageEnterAnimation(next) {
   }
 
   const REVEAL_DUR = 0.65;
-  // Page rise runs slightly longer than the panel sweep so its ease-out settle
-  // stays visible after the panel has cleared (the page "easing into position").
-  const PAGE_RISE_DUR = 0.85;
 
   // Reveal begins when the squiggle is ~3/4 through (client: "squiggle 3/4 of the
   // way through as the screen goes up"). Shared clock with the leave timeline via
@@ -383,19 +380,21 @@ function runPageEnterAnimation(next) {
     { yPercent: -200, duration: REVEAL_DUR, ease: "panelOut", overwrite: "auto", immediateRender: false },
     "startEnter");
 
-  // New page rises into place with a REAL EASE-OUT so it DECELERATES to a gentle
-  // stop — never snapping. The panel keeps panelOut (client loves it), but that
-  // curve ACCELERATES into its end position — so a page on panelOut arrives at
-  // full speed and slams to its mark: the "linear key frame / bang" the client
-  // flagged. expo.out brakes the page smoothly as it lands. It also runs a touch
-  // longer than the panel (PAGE_RISE_DUR vs REVEAL_DUR) so the soft settle stays
-  // visible easing into position underneath the already-swept panel — which is
-  // exactly what the client described ("the page underneath easing into position").
+  // New page rises into place LOCKED to the panel — SAME start, SAME duration —
+  // so it moves in step with the swipe. (expo.out was front-loaded: the page did
+  // ~90% of its rise in the first third, but panelOut only uncovers the page in
+  // its second half — so the page had already finished before it was revealed and
+  // looked "disconnected / happened before the swipe finished".)
+  // Curve is power2.inOut, NOT panelOut: panelOut accelerates into its end
+  // position so the page arrived at full speed = the "linear / bang" snap. inOut
+  // eases IN (won't jump ahead of the panel's own slow start) AND eases OUT
+  // (decelerates to a soft stop exactly as the panel uncovers it). Net: the panel
+  // whooshes off (panelOut) while the page settles in step beneath it.
   // Travel 7dvh — at 15dvh the rise momentarily exposed layout edges on Home.
   tl.from(next, {
     y: "7dvh",
-    duration: PAGE_RISE_DUR,
-    ease: "expo.out",
+    duration: REVEAL_DUR,
+    ease: "power2.inOut",
   }, "startEnter");
 
   // Hide panel + lottie once they've swept out
