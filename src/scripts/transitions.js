@@ -380,22 +380,19 @@ function runPageEnterAnimation(next) {
     { yPercent: -200, duration: REVEAL_DUR, ease: "panelOut", overwrite: "auto", immediateRender: false },
     "startEnter");
 
-  // New page rises into place LOCKED to the panel — SAME start, SAME duration —
-  // so it moves in step with the swipe. (expo.out was front-loaded: the page did
-  // ~90% of its rise in the first third, but panelOut only uncovers the page in
-  // its second half — so the page had already finished before it was revealed and
-  // looked "disconnected / happened before the swipe finished".)
-  // Curve is power2.inOut, NOT panelOut: panelOut accelerates into its end
-  // position so the page arrived at full speed = the "linear / bang" snap. inOut
-  // eases IN (won't jump ahead of the panel's own slow start) AND eases OUT
-  // (decelerates to a soft stop exactly as the panel uncovers it). Net: the panel
-  // whooshes off (panelOut) while the page settles in step beneath it.
-  // Travel 7dvh — at 15dvh the rise momentarily exposed layout edges on Home.
+  // New page rises into place with power2.inOut — eases IN (won't jump ahead of
+  // the panel's own slow start) AND eases OUT (decelerates to a soft stop, no
+  // snap; panelOut would accelerate into a "bang", expo.out front-loaded and
+  // finished before the reveal). Started a hair AFTER the panel (startEnter +
+  // PAGE_RISE_OFFSET) so its settle lands just after the panel uncovers it,
+  // rather than exactly with the panel — client: locked-to-panel finished "a
+  // hair early". Travel 7dvh — at 15dvh the rise exposed layout edges on Home.
+  const PAGE_RISE_OFFSET = 0.1;
   tl.from(next, {
     y: "7dvh",
     duration: REVEAL_DUR,
     ease: "power2.inOut",
-  }, "startEnter");
+  }, `startEnter+=${PAGE_RISE_OFFSET}`);
 
   // Hide panel + lottie once they've swept out
   tl.set(transitionPanel, { autoAlpha: 0 }, ">");
