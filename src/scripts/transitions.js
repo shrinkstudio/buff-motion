@@ -64,8 +64,6 @@ CustomEase.create("panelIn", "M0,0 C0.048,0.465 0.123,0.989 1,1");
 CustomEase.create("panelOut", "M0,0 C1,0 0.831,0.992 1,1");
 gsap.defaults({ ease: "buff", duration: durationDefault });
 
-console.log("[buff] Bundle loaded — barba:", typeof barba, "gsap:", typeof gsap, "lenis:", hasLenis, "lottie:", typeof lottie);
-
 
 // -----------------------------------------
 // TRANSITION LOTTIE SETUP
@@ -110,7 +108,6 @@ function initTransitionLottie() {
       // Park the playhead on the first active frame so the Lottie is in a
       // known state before the first transition fires.
       transitionLottie.goToAndStop(ip, true);
-      console.log("[buff] Transition Lottie loaded — active range:", lottieRange);
     } else {
       console.warn("[buff] Transition Lottie loaded but totalFrames is 0 — falling back to native play");
     }
@@ -280,7 +277,6 @@ function initAfterEnterFunctions(next) {
 // -----------------------------------------
 
 function runPageOnceAnimation(next) {
-  console.log("[buff] once — first page load");
   const tl = gsap.timeline();
 
   tl.call(() => {
@@ -291,7 +287,6 @@ function runPageOnceAnimation(next) {
 }
 
 function runPageLeaveAnimation(current, next) {
-  console.log("[buff] leave — page exit animation");
 
   const transitionWrap = document.querySelector("[data-transition-wrap]");
   const transitionPanel = transitionWrap.querySelector("[data-transition-panel]");
@@ -348,7 +343,6 @@ function runPageLeaveAnimation(current, next) {
 }
 
 function runPageEnterAnimation(next) {
-  console.log("[buff] enter — page enter animation");
 
   const transitionWrap = document.querySelector("[data-transition-wrap]");
   const transitionPanel = transitionWrap.querySelector("[data-transition-panel]");
@@ -456,7 +450,7 @@ barba.hooks.afterEnter(data => {
 });
 
 barba.init({
-  debug: true, // Set to false in production
+  debug: false,
   timeout: 7000,
   preventRunning: true,
   transitions: [

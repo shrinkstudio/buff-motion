@@ -61,12 +61,10 @@ export function initLottieAnimations(scope, opts = {}) {
       done = true;
       clearTimeout(timer);
       document.removeEventListener("buff:home-intro-done", go);
-      console.log("[buff] intro done — initialising home lotties");
       initLottieAnimations(scope);
     };
     document.addEventListener("buff:home-intro-done", go, { once: true });
     timer = setTimeout(go, 8000); // safety net if the event never arrives
-    console.log("[buff] home intro playing — deferring lottie init");
     return;
   }
 
