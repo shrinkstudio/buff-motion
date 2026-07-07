@@ -380,19 +380,17 @@ function runPageEnterAnimation(next) {
     { yPercent: -200, duration: REVEAL_DUR, ease: "panelOut", overwrite: "auto", immediateRender: false },
     "startEnter");
 
-  // New page rises into place with power2.inOut — eases IN (won't jump ahead of
-  // the panel's own slow start) AND eases OUT (decelerates to a soft stop, no
-  // snap; panelOut would accelerate into a "bang", expo.out front-loaded and
-  // finished before the reveal). Started a hair AFTER the panel (startEnter +
-  // PAGE_RISE_OFFSET) so its settle lands just after the panel uncovers it,
-  // rather than exactly with the panel — client: locked-to-panel finished "a
-  // hair early". Travel 7dvh — at 15dvh the rise exposed layout edges on Home.
-  const PAGE_RISE_OFFSET = 0.1;
+  // New page rises into place EXACTLY like the Home intro exit (client: "match
+  // home exactly"): same curve (panelOut), same duration (0.8 = home-intro
+  // exitDur), same travel (7dvh), starting with the panel sweep. Home's slower
+  // 0.8s is the crux — panelOut at the transition's 0.65 read as a "snap", but at
+  // 0.8 it eases the page home the way the client likes on Home. The panel +
+  // squiggle timing (REVEAL_DUR) is deliberately untouched ("the panel is great").
   tl.from(next, {
     y: "7dvh",
-    duration: REVEAL_DUR,
-    ease: "power2.inOut",
-  }, `startEnter+=${PAGE_RISE_OFFSET}`);
+    duration: 0.8,
+    ease: "panelOut",
+  }, "startEnter");
 
   // Hide panel + lottie once they've swept out
   tl.set(transitionPanel, { autoAlpha: 0 }, ">");

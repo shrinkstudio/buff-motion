@@ -41,6 +41,16 @@ let hasPlayed = false;
       opacity: 0;
       visibility: hidden;
     }
+    /* SPA return to Home: the <body> keeps data-home-intro-status="done" across
+       Barba navigations (body is never swapped), so any freshly-injected intro
+       panel / hero-video is hidden from the FIRST frame. The page-rise then
+       reveals clean content, instead of showing them and ripping them out in
+       afterEnter (the "load, then reload" jump the client flagged). First load
+       is unaffected — status isn't "done" until the intro has finished. */
+    html:not(.wf-design-mode) body[data-home-intro-status="done"] [data-home-intro],
+    html:not(.wf-design-mode) body[data-home-intro-status="done"] [data-home-hero-video] {
+      display: none !important;
+    }
   `;
   document.head.appendChild(style);
 })();
