@@ -225,14 +225,14 @@ export function initHomeIntro(scope) {
 
   // Page content rises and DECELERATES to a soft stop — power3.inOut, NOT panelOut.
   // panelOut accelerated INTO its end, so the home FIRST LOAD "just snapped into
-  // position, bang, no easing" (client). The page-to-page transition was already
-  // fixed; this home-intro rise was the one that got missed — same curve now, and
-  // DELAYED + LONGER (starts +0.3s after the panel lifts, runs 0.9s vs the panel's
-  // 0.8s) so the ease lands in the open as the panel clears, matching every other
-  // page. Words + panel above still ride up on panelOut as one unit — untouched.
+  // position, bang, no easing" (client). Starts +0.3s after the panel lifts so the
+  // ease lands in the open as the panel clears. Duration is DELIBERATELY slower
+  // than the page-to-page transitions (1.2s here vs 0.9s there) — client: the
+  // page transitions are fine, but the home first-load settle needs to be slower.
+  // Words + panel above still ride up on panelOut as one unit — untouched.
   tl.fromTo(pageContent,
     { y: "7dvh" },
-    { y: 0, duration: 0.9, ease: "power3.inOut" },
+    { y: 0, duration: 1.2, ease: "power3.inOut" },
     exitStart + 0.3
   );
 }
