@@ -374,20 +374,21 @@ function runPageEnterAnimation(next) {
     { yPercent: -200, duration: REVEAL_DUR, ease: "panelOut", overwrite: "auto", immediateRender: false },
     "startEnter");
 
-  // New page rises and DECELERATES to a soft stop — power3.inOut, NOT panelOut.
-  // panelOut accelerates INTO its end (max velocity at the finish), so the page
-  // slammed to a halt = the "the stop snaps" the client kept flagging. inOut eases
-  // IN (stays with the panel's own slow start, doesn't jump ahead) AND eases OUT
-  // (velocity → 0 at the finish = the soft landing). 0.8s > the panel's 0.65s
-  // reveal, so the page finishes ~0.15s AFTER the panel clears — its decelerating
-  // tail lands in the open where it's visible, and never "before the swipe".
-  // NOTE: panelOut only looked soft on the Home intro because the panel + page
-  // move locked together there; a standalone page rise exposes its hard finish.
+  // New page rises with power3.inOut (decelerates to a soft stop, no snap),
+  // DELAYED past the panel start and run LONGER so the ease plays out in the open
+  // (client: "it's easing but too early — finishing under the blue reveal; needs
+  // to be delayed and longer"). power3.inOut is quick through the middle, so at
+  // the old 0.8s starting with the panel it was ~95% done by the time the panel
+  // uncovered it — you only saw the last sliver. Now it starts +0.3s in and runs
+  // 0.9s (> the 0.65s panel), so the bulk of the rise + the soft landing happen
+  // AFTER the panel clears, where they're visible. home-intro.js mirrors these.
+  const PAGE_RISE_DUR = 0.9;
+  const PAGE_RISE_DELAY = 0.3;
   tl.from(next, {
     y: "7dvh",
-    duration: 0.8,
+    duration: PAGE_RISE_DUR,
     ease: "power3.inOut",
-  }, "startEnter");
+  }, `startEnter+=${PAGE_RISE_DELAY}`);
 
   // Hide panel + lottie once they've swept out
   tl.set(transitionPanel, { autoAlpha: 0 }, ">");

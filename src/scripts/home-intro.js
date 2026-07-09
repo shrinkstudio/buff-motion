@@ -223,14 +223,17 @@ export function initHomeIntro(scope) {
   // curve (client: "the same curve it was before" — quicker feel than power2.inOut).
   tl.to(root, { yPercent: -100, duration: exitDur, ease: "panelOut" }, exitStart);
 
-  // Page content rises into place IN SYNC, same curve. 7dvh travel (not 15dvh) so
-  // the rise doesn't momentarily expose the nav bar / next section through the
-  // viewport edges. This is the same "move up with the page" feel the page
-  // transition gives every other page.
+  // Page content rises and DECELERATES to a soft stop — power3.inOut, NOT panelOut.
+  // panelOut accelerated INTO its end, so the home FIRST LOAD "just snapped into
+  // position, bang, no easing" (client). The page-to-page transition was already
+  // fixed; this home-intro rise was the one that got missed — same curve now, and
+  // DELAYED + LONGER (starts +0.3s after the panel lifts, runs 0.9s vs the panel's
+  // 0.8s) so the ease lands in the open as the panel clears, matching every other
+  // page. Words + panel above still ride up on panelOut as one unit — untouched.
   tl.fromTo(pageContent,
     { y: "7dvh" },
-    { y: 0, duration: exitDur, ease: "panelOut" },
-    exitStart
+    { y: 0, duration: 0.9, ease: "power3.inOut" },
+    exitStart + 0.3
   );
 }
 
