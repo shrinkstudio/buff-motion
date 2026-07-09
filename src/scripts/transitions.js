@@ -220,7 +220,7 @@ function initBeforeEnterFunctions(next) {
   // NOW (beforeEnter, while the transition panel still covers the screen) so they
   // render BEFORE the page reveals, instead of snapping in during afterEnter.
   // The full afterEnter pass skips them (already data-lottie-fired).
-  if (has('[data-lottie-static="true"]')) initLottieAnimations(nextPage, { staticOnly: true });
+  if (has('[data-lottie-static]:not([data-lottie-static="false"])')) initLottieAnimations(nextPage, { staticOnly: true });
 }
 
 function initAfterEnterFunctions(next) {
