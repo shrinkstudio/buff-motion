@@ -374,16 +374,19 @@ function runPageEnterAnimation(next) {
     { yPercent: -200, duration: REVEAL_DUR, ease: "panelOut", overwrite: "auto", immediateRender: false },
     "startEnter");
 
-  // New page rises into place EXACTLY like the Home intro exit (client: "match
-  // home exactly"): same curve (panelOut), same duration (0.8 = home-intro
-  // exitDur), same travel (7dvh), starting with the panel sweep. Home's slower
-  // 0.8s is the crux — panelOut at the transition's 0.65 read as a "snap", but at
-  // 0.8 it eases the page home the way the client likes on Home. The panel +
-  // squiggle timing (REVEAL_DUR) is deliberately untouched ("the panel is great").
+  // New page rises and DECELERATES to a soft stop — power3.inOut, NOT panelOut.
+  // panelOut accelerates INTO its end (max velocity at the finish), so the page
+  // slammed to a halt = the "the stop snaps" the client kept flagging. inOut eases
+  // IN (stays with the panel's own slow start, doesn't jump ahead) AND eases OUT
+  // (velocity → 0 at the finish = the soft landing). 0.8s > the panel's 0.65s
+  // reveal, so the page finishes ~0.15s AFTER the panel clears — its decelerating
+  // tail lands in the open where it's visible, and never "before the swipe".
+  // NOTE: panelOut only looked soft on the Home intro because the panel + page
+  // move locked together there; a standalone page rise exposes its hard finish.
   tl.from(next, {
     y: "7dvh",
     duration: 0.8,
-    ease: "panelOut",
+    ease: "power3.inOut",
   }, "startEnter");
 
   // Hide panel + lottie once they've swept out
