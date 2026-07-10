@@ -13,6 +13,10 @@ function processWebflowCMSLists(element) {
   webflowSelectors.forEach((selector) => {
     const webflowElements = element.querySelectorAll(selector);
     webflowElements.forEach((webflowElement) => {
+      // Only flatten the top-level Collection List that feeds the slides.
+      // Skip nested Collection Lists that live inside a slide (e.g. a card's
+      // deliverables list) — removing those wrappers breaks their layout.
+      if (webflowElement.closest(".swiper-slide")) return;
       const children = Array.from(webflowElement.childNodes);
       children.forEach((child) => {
         webflowElement.parentNode.insertBefore(child, webflowElement);
