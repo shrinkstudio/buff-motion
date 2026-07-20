@@ -13,7 +13,7 @@
 //   data-lottie-loop      — "true"/"false"  (default: "true")
 //   data-lottie-start     — start % of total frames (default: 0)
 //   data-lottie-end       — end % of total frames   (default: 100)
-//   data-lottie-static    — present (any value except "false") → never animate, hold the END frame (the
+//   data-lottie-static    — "true" → never animate, hold the END frame (the
 //                           finished/fully-drawn pose). For neutralising a Lottie
 //                           whose draw-on glitches in the SVG renderer.
 //
@@ -68,7 +68,7 @@ export function initLottieAnimations(scope, opts = {}) {
     return;
   }
 
-  const selector = staticOnly ? "[data-lottie][data-lottie-static]:not([data-lottie-static='false'])" : "[data-lottie]";
+  const selector = staticOnly ? "[data-lottie][data-lottie-static='true']" : "[data-lottie]";
   scope.querySelectorAll(selector).forEach(target => {
     // Skip if already fired (e.g. transition lottie, or static pre-inited in beforeEnter)
     if (target.hasAttribute("data-lottie-fired")) return;
@@ -93,8 +93,7 @@ export function initLottieAnimations(scope, opts = {}) {
     // STATIC: hold the finished (end) frame, never animate. Use to neutralise a
     // Lottie whose draw-on trim-path glitches in the SVG renderer — the final
     // drawn frame renders clean. Remove the attribute to re-animate.
-    const staticAttr = target.getAttribute("data-lottie-static");
-    const isStatic = staticAttr !== null && staticAttr !== "false";
+    const isStatic = target.getAttribute("data-lottie-static") === "true";
 
     function handleEnter() {
       if (!target.hasAttribute("data-lottie-fired")) {
