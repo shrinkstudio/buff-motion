@@ -326,10 +326,14 @@ function runPageLeaveAnimation(current, next) {
     { yPercent: -100, duration: COVER_DUR, ease: "power4.out" },
     0);
 
-  // Current page parallaxes up with the cover, same curve (power4.out)
+  // Current page eases up GENTLY behind the cover — power2.inOut, NOT the panel's
+  // fast power4.out. The blue panel stays quick (client likes that); the page
+  // underneath was snapping up with it, so a slow ease lets it drift up smoothly
+  // instead of jerking (client: "the blue coming in quickly is enough — just ease
+  // the page out slowly").
   tl.fromTo(current,
     { y: "0vh" },
-    { y: "-10dvh", duration: COVER_DUR, ease: "power4.out" },
+    { y: "-10dvh", duration: COVER_DUR, ease: "power2.inOut" },
     0);
 
   // Squiggle kicks partway through the cover and plays quickly, so it's ~3/4
@@ -379,16 +383,15 @@ function runPageEnterAnimation(next) {
     { yPercent: -200, duration: REVEAL_DUR, ease: "panelOut", overwrite: "auto", immediateRender: false },
     "startEnter");
 
-  // New page rises with power3.inOut (decelerates to a soft stop, no snap),
-  // DELAYED past the panel start and run LONGER so the ease plays out in the open
-  // (client: "it's easing but too early — finishing under the blue reveal; needs
-  // to be delayed and longer"). power3.inOut is quick through the middle, so at
-  // the old 0.8s starting with the panel it was ~95% done by the time the panel
-  // uncovered it — you only saw the last sliver. Now it starts +0.3s in and runs
-  // 0.9s (> the 0.65s panel), so the bulk of the rise + the soft landing happen
-  // AFTER the panel clears, where they're visible. home-intro.js mirrors these.
+  // New page rises with power3.inOut (decelerates to a soft stop, no snap), run
+  // LONGER than the panel (0.9s vs 0.65s) so the ease plays out in the open, and
+  // started with a SMALL delay so it OVERLAPS the panel's exit — the page is
+  // visibly easing up JUST as the blue leaves, rather than the blue clearing and
+  // THEN the rise happening a beat later (client: "move that easing sooner so the
+  // two overlap slightly"). +0.3s left a gap; +0.15s tucks the rise in behind the
+  // panel's tail so they overlap. home-intro.js mirrors the curve/length.
   const PAGE_RISE_DUR = 0.9;
-  const PAGE_RISE_DELAY = 0.3;
+  const PAGE_RISE_DELAY = 0.15;
   tl.from(next, {
     y: "7dvh",
     duration: PAGE_RISE_DUR,
