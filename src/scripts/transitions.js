@@ -17,7 +17,7 @@ import { initTypeform, destroyTypeform } from './typeform.js';
 import { initCursorMarquee, destroyCursorMarquee } from './cursor-marquee.js';
 import { initLogoWall, destroyLogoWall } from './logo-wall.js';
 import { initVideoHover, destroyVideoHover } from './video-hover.js';
-import { initSidenav, destroySidenav } from './sidenav.js';
+import { initSidenav, destroySidenav, preloadNavArrow } from './sidenav.js';
 import { initSocialShare, destroySocialShare } from './social-share.js';
 import { initFilter, destroyFilter } from './filter.js';
 import { initHomeIntro, destroyHomeIntro } from './home-intro.js';
@@ -221,6 +221,11 @@ function initBeforeEnterFunctions(next) {
   // render BEFORE the page reveals, instead of snapping in during afterEnter.
   // The full afterEnter pass skips them (already data-lottie-fired).
   if (has('[data-lottie-static="true"]')) initLottieAnimations(nextPage, { staticOnly: true });
+
+  // Pre-render the nav arrow NOW (while the panel still covers the screen) so it's
+  // in the button when the page reveals and rises WITH it, instead of popping in
+  // after its Lottie loads in afterEnter. initSidenav then adopts this instance.
+  preloadNavArrow(nextPage);
 }
 
 function initAfterEnterFunctions(next) {

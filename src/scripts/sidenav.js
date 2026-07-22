@@ -25,6 +25,7 @@ let navWrap = null;
 let toggleHandlers = [];
 let keyHandler = null;
 let arrowLottie = null;
+let preloadedArrow = null;
 let bgLottie = null;
 
 // Resets all sidenav DOM state to a clean closed baseline. Called at the
@@ -104,6 +105,29 @@ function loadNavLottie(container) {
     autoplay: false,
     path: src,
   });
+}
+
+// Pre-render the nav arrow at its resting frame DURING the transition cover
+// (called from beforeEnter), so it's present in the button as the page reveals
+// and rises WITH the page — the logo does this natively because it's an inline
+// SVG; the arrow is an async Lottie, so without this it only draws in afterEnter
+// (after the reveal) and pops in. Held in a SEPARATE var so the afterEnter
+// destroy (which kills the OLD page's arrowLottie) doesn't touch this incoming
+// one; initSidenav then ADOPTS it instead of re-loading (a reload would clear
+// the button and pop the arrow in again).
+export function preloadNavArrow(scope) {
+  scope = scope || document;
+  const arrowEl = scope.querySelector("[data-nav-lottie-arrow]") || document.querySelector("[data-nav-lottie-arrow]");
+  if (!arrowEl) return;
+  if (arrowLottie && arrowLottie.__navArrowEl === arrowEl) return;      // already the active one
+  if (preloadedArrow && preloadedArrow.__navArrowEl === arrowEl) return; // already queued
+  if (preloadedArrow) { try { preloadedArrow.destroy(); } catch (e) {} preloadedArrow = null; }
+  const anim = loadNavLottie(arrowEl);
+  if (!anim) return;
+  anim.__navArrowEl = arrowEl;
+  const closedFrame = parseFloat(arrowEl.getAttribute("data-lottie-frame") || "31.5");
+  anim.addEventListener("DOMLoaded", () => anim.goToAndStop(closedFrame, true));
+  preloadedArrow = anim;
 }
 
 // NO MASK (major client ask). Each [sidenav__menu-list-item] ships with
@@ -212,17 +236,31 @@ export function initSidenav(scope) {
   const settleFrame = arrowLottieEl
     ? parseFloat(arrowLottieEl.getAttribute("data-lottie-settle-frame") || "90")
     : 90;
-  arrowLottie = loadNavLottie(arrowLottieEl);
+  // Adopt the arrow pre-rendered in beforeEnter (already showing the resting
+  // frame, so it rose in WITH the page) rather than re-loading — a reload clears
+  // the button and pops the arrow in again after the reveal. Falls back to a
+  // fresh load when no preload ran (e.g. a direct first paint).
+  if (preloadedArrow && preloadedArrow.__navArrowEl === arrowLottieEl) {
+    arrowLottie = preloadedArrow;
+    preloadedArrow = null;
+  } else {
+    if (preloadedArrow) { try { preloadedArrow.destroy(); } catch (e) {} preloadedArrow = null; }
+    arrowLottie = loadNavLottie(arrowLottieEl);
+    if (arrowLottie) arrowLottie.__navArrowEl = arrowLottieEl;
+  }
   if (arrowLottie) {
     // Drive playback so 31.5 → 63 takes 0.9s. Lottie is 90f @ 30fps; playSegments
     // runs at native fps, so set speed = segmentFrames / (duration * fps) to hit
     // the client's 0.9s. Linear playback (matches the IX2 "Linear (None)" easing).
     const NATIVE_FPS = 30, OPEN_DURATION = 0.9;
     const arrowSpeed = Math.abs(openFrame - closedFrame) / (OPEN_DURATION * NATIVE_FPS);
-    arrowLottie.addEventListener("DOMLoaded", () => {
+    const applyRest = () => {
       arrowLottie.setSpeed(arrowSpeed);
       arrowLottie.goToAndStop(closedFrame, true);
-    });
+    };
+    // A preloaded arrow may already be loaded (DOMLoaded won't fire again) — apply now.
+    if (arrowLottie.isLoaded) applyRest();
+    else arrowLottie.addEventListener("DOMLoaded", applyRest);
   }
 
   // The bg squiggle Lottie now ANIMATES on every viewport (client reinstated it
