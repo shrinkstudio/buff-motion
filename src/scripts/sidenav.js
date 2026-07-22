@@ -186,7 +186,13 @@ export function initSidenav(scope) {
   const menuButton = document.querySelector("[data-sidenav-button]");
   const menuButtonTexts = menuButton ? menuButton.querySelectorAll("[data-sidenav-label]") : [];
   const menuButtonIcon = menuButton ? menuButton.querySelector("[data-sidenav-icon]") : null;
-  const arrowLottieEl = document.querySelector("[data-nav-lottie-arrow]");
+  // Scope to the INCOMING page first (like navWrap above). During a Barba
+  // navigation the OLD + NEW containers both briefly exist; an unscoped
+  // document.querySelector returns the OLD page's arrow (earlier in the DOM), so
+  // the adopt check below mismatched the preloaded (NEW) arrow and reloaded it
+  // fresh — the pop. Scoping to `scope` (data.next.container) picks the NEW arrow,
+  // matching what preloadNavArrow queued in beforeEnter, so the adopt lands.
+  const arrowLottieEl = scope.querySelector("[data-nav-lottie-arrow]") || document.querySelector("[data-nav-lottie-arrow]");
 
   // Load arrow Lottie + hold at the configured "closed" frame.
   //
