@@ -13,7 +13,7 @@ import { initLottieAnimations, destroyLottieAnimations } from './lottie.js';
 import { initCopyClip, destroyCopyClip } from './copy-clip.js';
 import { initTOC, destroyTOC } from './toc.js';
 import { initContentReveal, destroyContentReveal } from './content-reveal.js';
-import { initTypeform, destroyTypeform } from './typeform.js';
+import { initTypeform, destroyTypeform, initTypeformPopupDelegation } from './typeform.js';
 import { initCursorMarquee, destroyCursorMarquee } from './cursor-marquee.js';
 import { initLogoWall, destroyLogoWall } from './logo-wall.js';
 import { initVideoHover, destroyVideoHover } from './video-hover.js';
@@ -170,6 +170,7 @@ function initOnceFunctions() {
 
   // Document-level delegation (bind once)
   initModalDelegation();
+  initTypeformPopupDelegation();
   initFontSizeDetect();
   initSkipLink();
 

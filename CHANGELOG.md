@@ -2,6 +2,11 @@
 
 All notable changes to the Buff Motion Webflow bundle. Dates are commit dates.
 
+## Unreleased
+
+- **Typeform popup** — `data-typeform-popup="<id>"` on any button/link (or a wrapper) opens that form in a popup. Used for the footer "Stay in the loop" newsletter button. Live-embed IDs (`01M2…`) are resolved to the form ID on first click. Page scroll pauses while it's open.
+- **Typeform script** — loaded once and shared with the global popover snippet (no more duplicate `embed.js` tag on each page change).
+
 ## v1.0.0 — 2026-06-25
 
 Launch baseline. Full rebuild of buffmotion.com on a new Webflow build, live on `buffmotion.com` in Buff's workspace.

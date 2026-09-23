@@ -156,7 +156,7 @@ All modules are wired through `transitions.js` — destroyed in `initBeforeEnter
 | `nav-over-hero.js` | `[data-nav-over-hero-trigger]` | Toggles `data-nav-over-hero` on body for nav legibility over the hero video. |
 | `video-hover.js` | hover attrs | Hover-to-play video. |
 | `modal.js` | `<dialog>` | Modal dialogs (event delegation). |
-| `typeform.js` | `[data-typeform]` | Typeform embed. |
+| `typeform.js` | `[data-typeform]`, `[data-typeform-popup]` | Typeform inline embed, or a popup opened by clicking any button/link. Accepts a form ID or a live-embed ID. |
 | `utilities.js` | misc | Footer year, skip link, font-size detect, etc. |
 
 ---
