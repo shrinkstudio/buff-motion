@@ -10,6 +10,9 @@
 //                                 one); clicking it opens the form in a
 //                                 full-screen popup
 //
+// data-typeform-source="<value>" on either element sets utm_source
+// (empty = none). Without it, SOURCES below is used.
+//
 // <id> can be a real form ID (from form.typeform.com/to/<id>) or a
 // live-embed ID (the 01M2... value from a data-tf-live snippet). Live IDs
 // are resolved to the real form ID on first click.
@@ -56,7 +59,8 @@ function injectTypeformStyles() {
   document.head.appendChild(style);
 }
 
-// utm_source per Typeform form ID
+// Fallback utm_source per form ID, used when an element has no
+// data-typeform-source attribute (set from the component props in Webflow)
 const SOURCES = {
   y2W6fJcR: "project_enquiry",
   RbEk9XDg: "website",
@@ -92,14 +96,20 @@ function resolveFormId(id) {
   });
 }
 
+// data-typeform-source wins (empty = none); otherwise the fallback list
+function sourceFor(el, formId) {
+  const attr = el.getAttribute("data-typeform-source");
+  return attr !== null ? attr.trim() : SOURCES[formId] || "";
+}
+
 // Live embed snippet with utm_source added to its hidden fields
-function fetchEmbed(liveId) {
+function fetchEmbed(liveId, el) {
   return fetchLiveHtml(liveId).then((html) => {
     const tmp = document.createElement("div");
     tmp.innerHTML = html;
     const node = tmp.firstElementChild;
     const type = node && EMBED_TYPES.find((t) => node.hasAttribute("data-tf-" + t));
-    const source = type && SOURCES[node.getAttribute("data-tf-" + type)];
+    const source = type && sourceFor(el, node.getAttribute("data-tf-" + type));
     if (source) {
       const hidden = (node.getAttribute("data-tf-hidden") || "")
         .split(",")
@@ -111,18 +121,20 @@ function fetchEmbed(liveId) {
   });
 }
 
-function getPopup(id) {
-  if (!popups[id]) {
-    popups[id] = Promise.all([resolveFormId(id), loadTypeformScript()]).then(([formId]) =>
-      window.tf.createPopup(formId, {
-        ...(SOURCES[formId] && { hidden: { utm_source: SOURCES[formId] } }),
+function getPopup(id, trigger) {
+  const key = id + "|" + (trigger.getAttribute("data-typeform-source") ?? "");
+  if (!popups[key]) {
+    popups[key] = Promise.all([resolveFormId(id), loadTypeformScript()]).then(([formId]) => {
+      const source = sourceFor(trigger, formId);
+      return window.tf.createPopup(formId, {
+        ...(source && { hidden: { utm_source: source } }),
         onReady: () => window.__buffMotionLenis?.stop(),
         onClose: () => window.__buffMotionLenis?.start(),
-      })
-    );
-    popups[id].catch(() => delete popups[id]);
+      });
+    });
+    popups[key].catch(() => delete popups[key]);
   }
-  return popups[id];
+  return popups[key];
 }
 
 export function initTypeform(scope) {
@@ -137,7 +149,7 @@ export function initTypeform(scope) {
     if (!liveId || el.dataset.typeformInit) return;
     el.dataset.typeformInit = "true";
 
-    Promise.all([fetchEmbed(liveId), loadTypeformScript()])
+    Promise.all([fetchEmbed(liveId, el), loadTypeformScript()])
       .then(([nodes]) => el.replaceChildren(...nodes))
       .catch(() => el.setAttribute("data-tf-live", liveId))
       .then(() => window.tf?.load?.());
@@ -156,7 +168,7 @@ export function initTypeformPopupDelegation() {
     if (!id) return;
     e.preventDefault();
     injectPopupCss();
-    getPopup(id)
+    getPopup(id, trigger)
       .then((popup) => popup.open())
       .catch((err) => console.error(err));
   });
