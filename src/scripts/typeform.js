@@ -56,6 +56,14 @@ function injectTypeformStyles() {
   document.head.appendChild(style);
 }
 
+// utm_source per Typeform form ID
+const SOURCES = {
+  y2W6fJcR: "project_enquiry",
+  RbEk9XDg: "website",
+};
+
+const EMBED_TYPES = ["widget", "popup", "popover", "slider", "sidetab"];
+
 function injectPopupCss() {
   if (document.querySelector(`link[href="${POPUP_CSS}"]`)) return;
   const link = document.createElement("link");
@@ -65,22 +73,49 @@ function injectPopupCss() {
 }
 
 // Live-embed IDs point at a snippet stored in Typeform. Fetch it (the same
-// request embed.js makes for data-tf-live) and pull the form ID out of it.
+// request embed.js makes for data-tf-live).
+function fetchLiveHtml(id) {
+  return fetch(`https://api.typeform.com/single-embed/${id}`)
+    .then((res) => {
+      if (!res.ok) throw new Error(`[typeform] Live embed ${id}: ${res.status}`);
+      return res.json();
+    })
+    .then(({ html }) => html || "");
+}
+
 function resolveFormId(id) {
   if (!LIVE_ID_RE.test(id)) return Promise.resolve(id);
-  return fetch(`https://api.typeform.com/single-embed/${id}`)
-    .then((res) => res.json())
-    .then(({ html }) => {
-      const match = /data-tf-(?:widget|popup|slider|popover|sidetab)="([^"]+)"/.exec(html || "");
-      if (!match) throw new Error(`[typeform] No form ID found for live embed ${id}`);
-      return match[1];
-    });
+  return fetchLiveHtml(id).then((html) => {
+    const match = /data-tf-(?:widget|popup|slider|popover|sidetab)="([^"]+)"/.exec(html);
+    if (!match) throw new Error(`[typeform] No form ID found for live embed ${id}`);
+    return match[1];
+  });
+}
+
+// Live embed snippet with utm_source added to its hidden fields
+function fetchEmbed(liveId) {
+  return fetchLiveHtml(liveId).then((html) => {
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html;
+    const node = tmp.firstElementChild;
+    const type = node && EMBED_TYPES.find((t) => node.hasAttribute("data-tf-" + t));
+    const source = type && SOURCES[node.getAttribute("data-tf-" + type)];
+    if (source) {
+      const hidden = (node.getAttribute("data-tf-hidden") || "")
+        .split(",")
+        .filter((pair) => pair && !pair.startsWith("utm_source="));
+      hidden.unshift("utm_source=" + source);
+      node.setAttribute("data-tf-hidden", hidden.join(","));
+    }
+    return tmp.childNodes;
+  });
 }
 
 function getPopup(id) {
   if (!popups[id]) {
     popups[id] = Promise.all([resolveFormId(id), loadTypeformScript()]).then(([formId]) =>
       window.tf.createPopup(formId, {
+        ...(SOURCES[formId] && { hidden: { utm_source: SOURCES[formId] } }),
         onReady: () => window.__buffMotionLenis?.stop(),
         onClose: () => window.__buffMotionLenis?.start(),
       })
@@ -97,14 +132,15 @@ export function initTypeform(scope) {
 
   injectTypeformStyles();
 
-  loadTypeformScript().then(() => {
-    els.forEach((el) => {
-      const formId = el.getAttribute("data-typeform");
-      if (!formId || el.dataset.typeformInit) return;
-      el.dataset.typeformInit = "true";
-      el.setAttribute("data-tf-live", formId);
-      window.tf?.load?.();
-    });
+  els.forEach((el) => {
+    const liveId = el.getAttribute("data-typeform");
+    if (!liveId || el.dataset.typeformInit) return;
+    el.dataset.typeformInit = "true";
+
+    Promise.all([fetchEmbed(liveId), loadTypeformScript()])
+      .then(([nodes]) => el.replaceChildren(...nodes))
+      .catch(() => el.setAttribute("data-tf-live", liveId))
+      .then(() => window.tf?.load?.());
   });
 }
 

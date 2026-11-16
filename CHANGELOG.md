@@ -4,6 +4,7 @@ All notable changes to the Buff Motion Webflow bundle. Dates are commit dates.
 
 ## Unreleased
 
+- **Typeform utm_source** — embeds and popups pass a fixed `utm_source` per form for Mailchimp tracking: newsletter (`RbEk9XDg`) = `website`, project enquiry (`y2W6fJcR`) = `project_enquiry`. Set in `SOURCES` in `typeform.js`. The footer popover snippet in Site Settings passes `website` itself.
 - **Typeform popup** — `data-typeform-popup="<id>"` on any button/link (or a wrapper) opens that form in a popup. Used for the footer "Stay in the loop" newsletter button. Live-embed IDs (`01M2…`) are resolved to the form ID on first click. Page scroll pauses while it's open.
 - **Typeform script** — loaded once and shared with the global popover snippet (no more duplicate `embed.js` tag on each page change).
 
